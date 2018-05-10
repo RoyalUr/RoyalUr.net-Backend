@@ -51,7 +51,7 @@ public class PacketOutState {
             DiceRoll diceRoll,
             boolean hasMoves) {
 
-        Checks.ensureNonNull(currentPlayer, "currentPlayer");
+        Checks.ensureNonNull(diceRoll, "diceRoll");
 
         PacketOut packet = create(lightPlayer, darkPlayer, board, currentPlayer);
 

@@ -1,6 +1,7 @@
 package net.sothatsit.royalurserver;
 
 import net.sothatsit.royalurserver.game.Game;
+import net.sothatsit.royalurserver.game.GameState;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.util.Checks;
 
@@ -17,15 +18,24 @@ public class Matchmaker {
     private final Map<Client, Game> gamesByClientId = new HashMap<>();
     private Client waitingClient = null;
 
+
+
     public Game findGame(Client client) {
         synchronized (lock) {
-            return gamesByClientId.get(client);
+            Game game = gamesByClientId.get(client);
+
+            if(game.getState() == GameState.DONE) {
+                stopGame(game);
+                return null;
+            }
+
+            return game;
         }
     }
 
     public void connectClient(Client client) {
         synchronized (lock) {
-            Game currentGame = gamesByClientId.get(client);
+            Game currentGame = findGame(client);
 
             if(currentGame != null) {
                 currentGame.onReconnect(client);
@@ -52,7 +62,7 @@ public class Matchmaker {
 
     public void disconnectClient(Client client) {
         synchronized (lock) {
-            Game currentGame = gamesByClientId.get(client);
+            Game currentGame = findGame(client);
 
             if(currentGame != null) {
                 currentGame.onDisconnect(client);
@@ -66,7 +76,7 @@ public class Matchmaker {
 
     public void timeoutClient(Client client) {
         synchronized (lock) {
-            Game game = gamesByClientId.get(client);
+            Game game = findGame(client);
 
             if(game != null) {
                 game.onTimeout(client);

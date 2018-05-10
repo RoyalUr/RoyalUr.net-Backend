@@ -8,6 +8,7 @@ import net.sothatsit.royalurserver.network.incoming.PacketInRoll;
 import net.sothatsit.royalurserver.network.outgoing.*;
 import net.sothatsit.royalurserver.scheduler.Scheduler;
 import net.sothatsit.royalurserver.util.Checks;
+import net.sothatsit.royalurserver.util.Time;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class Game {
+
+    private static final long GAME_TIMEOUT_MS = 60 * 1000;
 
     private final Scheduler scheduler;
     private final Logger logger;
@@ -57,10 +60,31 @@ public class Game {
         sendGamePacket(darkClient);
 
         broadcast(createStatePacket());
+
+        scheduler.scheduleRepeating("game timeout", () -> {
+            Time disconnectTime = Time.now();
+
+            if(!lightClient.isConnected()) {
+                disconnectTime = lightClient.getDisconnectTime();
+            }
+
+            if(!darkClient.isConnected() && disconnectTime.isAfter(darkClient.getDisconnectTime())) {
+                disconnectTime = darkClient.getDisconnectTime();
+            }
+
+            if(disconnectTime.getTimeSinceMillis() > GAME_TIMEOUT_MS) {
+                stop();
+            }
+        }, 5000, TimeUnit.MILLISECONDS);
     }
 
     public void stop() {
         scheduler.stop();
+        state = GameState.DONE;
+    }
+
+    public GameState getState() {
+        return state;
     }
 
     public String getShortId() {
@@ -209,9 +233,6 @@ public class Game {
             state.addScore();
         }
 
-        this.state = GameState.ROLL;
-        this.roll = null;
-
         if(!move.to.isLotus()) {
             this.currentPlayer = Player.getOtherPlayer(state.player);
         }
@@ -225,6 +246,9 @@ public class Game {
             scheduler.scheduleIn("winner", () -> {
                 broadcast(PacketOutWin.create(state.player));
             }, 500, TimeUnit.MILLISECONDS);
+        } else {
+            this.state = GameState.ROLL;
+            this.roll = null;
         }
 
         broadcast(PacketOutMove.create(move));

@@ -18,6 +18,14 @@ public class Time {
         return time > System.nanoTime();
     }
 
+    public boolean isBefore(Time other) {
+        return time < other.time;
+    }
+
+    public boolean isAfter(Time other) {
+        return time > other.time;
+    }
+
     public long getTimeSinceNanos() {
         return System.nanoTime() - time;
     }
@@ -32,6 +40,12 @@ public class Time {
 
     public long getTimeToMillis() {
         return getTimeToNanos() / 1000000;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof Time && time == ((Time) obj).time;
+
     }
 
     public static Time now() {
@@ -51,5 +65,4 @@ public class Time {
 
         return new Time(System.nanoTime() - units.toNanos(duration));
     }
-
 }
