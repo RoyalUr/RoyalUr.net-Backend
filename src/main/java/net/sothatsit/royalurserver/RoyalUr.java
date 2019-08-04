@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 
 public class RoyalUr {
 
-    public static final Logger logger = Main.getLogger("main");
+    public static final Logger logger = Logging.getLogger("main");
 
     private final Scheduler scheduler;
     private final Matchmaker matchmaker;

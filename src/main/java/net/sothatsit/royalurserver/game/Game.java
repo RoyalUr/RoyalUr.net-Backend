@@ -1,8 +1,9 @@
 package net.sothatsit.royalurserver.game;
 
-import net.sothatsit.royalurserver.Main;
+import net.sothatsit.royalurserver.Logging;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
+import net.sothatsit.royalurserver.network.incoming.PacketInGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInMove;
 import net.sothatsit.royalurserver.network.incoming.PacketInRoll;
 import net.sothatsit.royalurserver.network.outgoing.*;
@@ -11,7 +12,6 @@ import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.Time;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -21,7 +21,7 @@ public class Game {
 
     private final Scheduler scheduler;
     private final Logger logger;
-    public final UUID id;
+    public final GameID id;
 
     public final Client lightClient;
     public final Client darkClient;
@@ -35,14 +35,14 @@ public class Game {
     private DiceRoll roll;
     private List<Move> potentialMoves;
 
-    public Game(Client lightClient, Client darkClient) {
+    public Game(GameID id, Client lightClient, Client darkClient) {
         Checks.ensureNonNull(lightClient, "lightClient");
         Checks.ensureNonNull(darkClient, "darkClient");
 
-        this.id = UUID.randomUUID();
-        this.scheduler = new Scheduler("game " + getShortId(), 100, TimeUnit.MILLISECONDS);
+        this.id = id;
+        this.scheduler = new Scheduler("game " + id, 100, TimeUnit.MILLISECONDS);
         this.scheduler.start();
-        this.logger = Main.getLogger("game " + getShortId());
+        this.logger = Logging.getLogger("game " + id);
 
         this.lightClient = lightClient;
         this.darkClient = darkClient;
@@ -87,8 +87,8 @@ public class Game {
         return state;
     }
 
-    public String getShortId() {
-        return id.toString().substring(0, 8);
+    public GameID getID() {
+        return id;
     }
 
     private Player getPlayer(Client client) {
@@ -111,7 +111,7 @@ public class Game {
         Player player = getPlayer(client);
         PlayerState state = getState(Player.getOtherPlayer(player));
 
-        client.send(PacketOutGame.create(player, state.name));
+        client.send(PacketOutGame.create(id, player, state.name));
     }
 
     private PacketOut createStatePacket() {
@@ -255,10 +255,8 @@ public class Game {
         broadcast(createStatePacket());
     }
 
-    public void onMessage(Client client, PacketIn packet) {
-        logger.info(getPlayer(client) + " -> " + packet);
-
-        scheduler.schedule("onMessage from " + client, () -> {
+    private void handlePacket(Client client, PacketIn packet) {
+        try {
             switch (packet.type) {
                 case ROLL:
                     PacketInRoll.read(packet);
@@ -270,11 +268,31 @@ public class Game {
 
                     onMove(client, move);
                     break;
+                case GAME:
+                    PacketInGame game = PacketInGame.read(packet);
+
+                    System.out.println("Recieved game packet: " + game.gameID);
+                    break;
                 default:
                     client.error("Unexpected packet " + packet);
                     logger.warning("Unexpected packet " + packet + " from " + client);
                     break;
             }
-        });
+        } catch (Exception exception) {
+            // Try report the error to the client, before propagating it up the call chain
+            try {
+                client.error("The game server has hit an error");
+            } catch (Exception reportException){
+                String errorMessage = "Exception handling packet of type " + packet.type + " from client " + client.id;
+                RuntimeException propagateError = new RuntimeException(errorMessage);
+                propagateError.addSuppressed(reportException);
+                throw propagateError;
+            }
+        }
+    }
+
+    public void onMessage(Client client, PacketIn packet) {
+        logger.info(getPlayer(client) + " -> " + packet);
+        scheduler.schedule("onMessage from " + client, () -> this.handlePacket(client, packet));
     }
 }

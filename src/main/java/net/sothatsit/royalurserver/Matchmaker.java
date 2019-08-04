@@ -1,12 +1,15 @@
 package net.sothatsit.royalurserver;
 
 import net.sothatsit.royalurserver.game.Game;
+import net.sothatsit.royalurserver.game.GameID;
 import net.sothatsit.royalurserver.game.GameState;
 import net.sothatsit.royalurserver.network.Client;
+import net.sothatsit.royalurserver.scheduler.Scheduler;
 import net.sothatsit.royalurserver.util.Checks;
 
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class Matchmaker {
 
@@ -14,17 +17,35 @@ public class Matchmaker {
 
     private final Object lock = new Object();
 
+    private final Scheduler scheduler = new Scheduler("matchmaker", 1, TimeUnit.SECONDS);
     private final List<Game> games = new ArrayList<>();
     private final Map<Client, Game> gamesByClientId = new HashMap<>();
     private Client waitingClient = null;
 
+    public Matchmaker() {
+        scheduler.scheduleRepeating("game-purger", () -> {
+            synchronized (lock) {
+                List<Game> done = new ArrayList<>();
 
+                for(Game game : games) {
+                    if(game.getState() != GameState.DONE)
+                        continue;
+
+                    done.add(game);
+                }
+
+                for(Game game : done) {
+                    stopGame(game);
+                }
+            }
+        }, 5, TimeUnit.SECONDS);
+    }
 
     public Game findGame(Client client) {
         synchronized (lock) {
             Game game = gamesByClientId.get(client);
 
-            if(game.getState() == GameState.DONE) {
+            if(game != null && game.getState() == GameState.DONE) {
                 stopGame(game);
                 return null;
             }
@@ -52,7 +73,7 @@ public class Matchmaker {
             Client light = (flag ? waitingClient : client);
             Client dark = (flag ? client : waitingClient);
 
-            Game game = new Game(light, dark);
+            Game game = new Game(GameID.random(), light, dark);
 
             gamesByClientId.put(light, game);
             gamesByClientId.put(dark, game);
@@ -112,7 +133,7 @@ public class Matchmaker {
 
     public List<Game> getGames() {
         synchronized (lock) {
-            return Collections.unmodifiableList(games);
+            return Collections.unmodifiableList(new ArrayList<>(games));
         }
     }
 }

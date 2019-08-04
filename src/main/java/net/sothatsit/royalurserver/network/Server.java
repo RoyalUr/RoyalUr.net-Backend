@@ -1,5 +1,6 @@
 package net.sothatsit.royalurserver.network;
 
+import net.sothatsit.royalurserver.Logging;
 import net.sothatsit.royalurserver.Main;
 import net.sothatsit.royalurserver.RoyalUr;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
@@ -40,7 +41,7 @@ public class Server extends WebSocketServer {
         Checks.ensureNonNull(game, "game");
 
         this.game = game;
-        this.logger = Main.getLogger("server " + port);
+        this.logger = Logging.getLogger("server " + port);
         this.scheduler = new Scheduler("server " + port, 1, TimeUnit.SECONDS);
 
         this.clients = new ConcurrentHashMap<>();

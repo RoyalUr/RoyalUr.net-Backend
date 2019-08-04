@@ -74,6 +74,7 @@ public class PacketIn {
 
         OPEN("open"),
         REOPEN("reopen"),
+        GAME("game"),
         ROLL("roll"),
         MOVE("move");
 

@@ -1,5 +1,6 @@
 package net.sothatsit.royalurserver.scheduler;
 
+import net.sothatsit.royalurserver.Logging;
 import net.sothatsit.royalurserver.Main;
 import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.Time;
@@ -28,7 +29,7 @@ public class Scheduler implements Runnable {
         Checks.ensureNonNull(tickLengthUnits, "tickLengthUnits");
 
         this.name = name;
-        this.logger = Main.getLogger("scheduler " + name);
+        this.logger = Logging.getLogger("scheduler " + name);
         this.tickLength = tickLengthUnits.toMillis(tickLength);
         this.tasks = new ArrayList<>();
     }
