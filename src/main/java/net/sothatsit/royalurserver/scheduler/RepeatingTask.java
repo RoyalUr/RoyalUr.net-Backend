@@ -5,6 +5,11 @@ import net.sothatsit.royalurserver.util.Time;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * A task that repeats on a given period.
+ *
+ * @author Paddy Lamont
+ */
 public class RepeatingTask extends Task {
 
     private final Runnable runnable;
@@ -25,16 +30,16 @@ public class RepeatingTask extends Task {
 
     @Override
     public boolean shouldRun() {
-        return lastRun.getTimeSinceNanos() > periodNanos;
+        return lastRun.getNanosSince() > periodNanos;
     }
 
     @Override
-    public boolean shouldRepeat() {
+    public boolean willRepeat() {
         return true;
     }
 
     @Override
-    public void run() {
+    public void runImpl() {
         this.lastRun = Time.now();
 
         runnable.run();

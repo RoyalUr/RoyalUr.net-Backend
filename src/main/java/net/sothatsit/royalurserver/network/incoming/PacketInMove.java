@@ -3,6 +3,11 @@ package net.sothatsit.royalurserver.network.incoming;
 import net.sothatsit.royalurserver.game.Location;
 import net.sothatsit.royalurserver.util.Checks;
 
+/**
+ * A packet sent to move a tile.
+ *
+ * @author Paddy Lamont
+ */
 public class PacketInMove {
 
     public final Location from;

@@ -1,31 +1,27 @@
 package net.sothatsit.royalurserver.scheduler;
 
 import net.sothatsit.royalurserver.util.Checks;
-import net.sothatsit.royalurserver.util.Time;
 
 /**
- * A task be be ran at a specific time.
+ * A task to be ran once next scheduler cycle.
  *
  * @author Paddy Lamont
  */
-public class ScheduledTask extends Task {
+public class RunnableTask extends Task {
 
-    private final Runnable runnable;
-    private final Time time;
+    private Runnable runnable;
 
-    public ScheduledTask(String name, Runnable runnable, Time time) {
+    public RunnableTask(String name, Runnable runnable) {
         super(name);
 
         Checks.ensureNonNull(runnable, "runnable");
-        Checks.ensureNonNull(time, "time");
 
         this.runnable = runnable;
-        this.time = time;
     }
 
     @Override
     public boolean shouldRun() {
-        return time.isPast();
+        return true;
     }
 
     @Override

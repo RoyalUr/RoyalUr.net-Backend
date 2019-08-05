@@ -4,10 +4,26 @@ import net.sothatsit.royalurserver.network.outgoing.PacketOut;
 import net.sothatsit.royalurserver.network.PacketWritable;
 import net.sothatsit.royalurserver.util.Checks;
 
+/**
+ * Represent a player in a game.
+ *
+ * @author Paddy Lamont
+ */
 public enum Player implements PacketWritable {
 
-    DARK(1, "dark"),
-    LIGHT(2, "light");
+    DARK(1, "dark") {
+        @Override
+        public Player getOtherPlayer() {
+            return LIGHT;
+        }
+    },
+
+    LIGHT(2, "light") {
+        @Override
+        public Player getOtherPlayer() {
+            return DARK;
+        }
+    };
 
     public final int id;
     public final String name;
@@ -27,12 +43,14 @@ public enum Player implements PacketWritable {
         return name + " player";
     }
 
-    public static Player getOtherPlayer(Player player) {
-        Checks.ensureNonNull(player, "player");
+    /**
+     * @return The other Player in a game.
+     */
+    public abstract Player getOtherPlayer();
 
-        return Player.values()[(player.ordinal() + 1) % 2];
-    }
-
+    /**
+     * @return An ID representing {@param player} to the client.
+     */
     public static int toClientID(Player player) {
         if(player == null)  return 0;
         if(player == DARK)  return 1;

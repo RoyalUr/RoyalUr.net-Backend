@@ -4,6 +4,11 @@ import net.sothatsit.royalurserver.util.Checks;
 
 import java.util.UUID;
 
+/**
+ * A packet sent by the client to indicate they are re-opening their connection and already have a unique ID.
+ *
+ * @author Paddy Lamont
+ */
 public class PacketInReOpen {
 
     public final UUID previousID;

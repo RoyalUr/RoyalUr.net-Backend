@@ -4,6 +4,11 @@ import net.sothatsit.royalurserver.game.GameID;
 import net.sothatsit.royalurserver.game.Player;
 import net.sothatsit.royalurserver.util.Checks;
 
+/**
+ * A packet sent to the client containing the details about a game they've been added to.
+ *
+ * @author Paddy Lamont
+ */
 public class PacketOutGame {
 
     public static PacketOut create(GameID gameID, Player yourPlayer, String opponentName) {

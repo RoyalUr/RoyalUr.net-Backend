@@ -1,7 +1,6 @@
 package net.sothatsit.royalurserver.network;
 
 import net.sothatsit.royalurserver.Logging;
-import net.sothatsit.royalurserver.Main;
 import net.sothatsit.royalurserver.RoyalUr;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInOpen;
@@ -15,25 +14,50 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.nio.channels.ServerSocketChannel;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * A server that accepts web socket connections, and manages
+ * those connections as clients, each with their own unique IDs.
+ *
+ * @author Paddy Lamont
+ */
 public class Server extends WebSocketServer {
 
+    private static final Field SERVER_FIELD;
+    static {
+        try {
+            SERVER_FIELD = WebSocketServer.class.getDeclaredField("server");
+            SERVER_FIELD.setAccessible(true);
+        } catch (NoSuchFieldException exception) {
+            throw new RuntimeException(exception);
+        }
+    }
+
     private static final int PURGE_TIMER_INTERVAL_SECS = 10;
+    private static final int PURGE_LIMBO_SECS = 10;
 
     private final RoyalUr game;
     private final Logger logger;
     private final Scheduler scheduler;
 
     private final Map<WebSocket, Client> clients;
+    private final Map<WebSocket, Long> limboConnections;
     private final Map<UUID, Client> disconnected;
     private RepeatingTask clientPurgerTask;
+
+    private final Object startMonitor = new Object();
+    private Thread serverThread;
     private boolean started = false;
+    private Exception startException;
+
 
     public Server(int port, RoyalUr game) {
         super(new InetSocketAddress(port));
@@ -45,11 +69,106 @@ public class Server extends WebSocketServer {
         this.scheduler = new Scheduler("server " + port, 1, TimeUnit.SECONDS);
 
         this.clients = new ConcurrentHashMap<>();
+        this.limboConnections = new ConcurrentHashMap<>();
         this.disconnected = new ConcurrentHashMap<>();
-        this.clientPurgerTask = null;
+        this.clientPurgerTask = new RepeatingTask(
+                "server client purger", this::purgeDisconnected,
+                PURGE_TIMER_INTERVAL_SECS, TimeUnit.SECONDS
+        );
+    }
+
+    @Override
+    public void start() {
+        this.started = false;
+        this.startException = null;
+        this.serverThread = new Thread(this);
+
+        try {
+            serverThread.start();
+
+            // Wait for the server to start
+            synchronized (startMonitor) {
+                startMonitor.wait();
+            }
+        } catch (Exception exception) {
+            RuntimeException toThrow = new RuntimeException("Exception starting thread", exception);
+
+            try {
+                stop();
+            } catch (Exception stopException) {
+                toThrow.addSuppressed(stopException);
+            }
+
+            throw toThrow;
+        }
+
+        if (startException != null)
+            throw new RuntimeException("Exception starting server", startException);
+    }
+
+    /**
+     * Properly close the socket. The standard WebSocketServer#close doesn't work.
+     */
+    private void killChannel() {
+        ServerSocketChannel channel;
+        try {
+            channel = (ServerSocketChannel) SERVER_FIELD.get(this);
+        } catch (IllegalAccessException exception) {
+            throw new RuntimeException("Exception getting WebSocketServer's channel", exception);
+        }
+
+        if (channel == null || !channel.isOpen())
+            return;
+
+        try {
+            channel.close();
+        } catch (IOException exception) {
+            throw new RuntimeException("Exception closing channel", exception);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void killServerThread() {
+        serverThread.stop();
+    }
+
+    @Override
+    public void stop(int timeout) {
+        try {
+            super.stop(timeout);
+            serverThread.interrupt();
+        } catch (InterruptedException exception) {
+            throw new RuntimeException("Interrupted waiting for server to stop", exception);
+        } finally {
+            try {
+                killChannel();
+            } finally {
+                killServerThread();
+            }
+        }
+    }
+
+    public void stop() {
+        this.stop(0);
     }
 
     public void purgeDisconnected() {
+        // Remove timed out limbo connections
+        Iterator<Map.Entry<WebSocket, Long>> limbo = limboConnections.entrySet().iterator();
+
+        while (limbo.hasNext()) {
+            Map.Entry<WebSocket, Long> entry = limbo.next();
+
+            long connectTime = entry.getValue();
+            long timeInLimbo = (System.nanoTime() - connectTime) / 1000000;
+
+            if (timeInLimbo >= PURGE_LIMBO_SECS) {
+                limbo.remove();
+                entry.getKey().close();
+            }
+        }
+
+        // Remove timed out clients
         Iterator<Client> clients = disconnected.values().iterator();
 
         while(clients.hasNext()) {
@@ -65,10 +184,11 @@ public class Server extends WebSocketServer {
     @Override
     public void onStart() {
         started = true;
+        scheduler.addTask(clientPurgerTask);
 
-        scheduler.scheduleRepeating(
-                "server client purger", this::purgeDisconnected,
-                PURGE_TIMER_INTERVAL_SECS, TimeUnit.SECONDS);
+        synchronized (startMonitor) {
+            startMonitor.notifyAll();
+        }
 
         System.out.println("Listening on " + getPort());
     }
@@ -78,27 +198,22 @@ public class Server extends WebSocketServer {
             clientPurgerTask.cancel();
         }
 
-        try {
-            stop();
-        } catch (IOException | InterruptedException e) {
-            System.err.println("Exception stopping server");
-            e.printStackTrace();
-        }
+        stop();
     }
 
     @Override
     public void onOpen(WebSocket socket, ClientHandshake clientHandshake) {
-        // TODO: Timeout connections that never send an open message
+        limboConnections.put(socket, System.currentTimeMillis());
     }
 
     @Override
     public void onClose(WebSocket socket, int code, String reason, boolean remote) {
-        Client client = clients.get(socket);
+        limboConnections.remove(socket);
+        Client client = clients.remove(socket);
 
         if(client == null)
             return;
 
-        clients.remove(socket);
         disconnected.put(client.id, client);
 
         client.onDisconnect();
@@ -157,7 +272,7 @@ public class Server extends WebSocketServer {
 
                 break;
             default:
-                new IllegalStateException("Expected open or reopen packet, recieved " + packet).printStackTrace();
+                new IllegalStateException("Expected open or reopen packet, received " + packet).printStackTrace();
                 socket.close();
                 return;
         }
@@ -167,6 +282,7 @@ public class Server extends WebSocketServer {
         }
 
         clients.put(socket, client);
+        limboConnections.remove(socket);
 
         client.onConnect(socket);
         client.send(PacketOutSetID.create(client.id));
@@ -175,19 +291,26 @@ public class Server extends WebSocketServer {
     }
 
     @Override
-    public void onError(WebSocket socket, Exception error) {
+    public void onError(WebSocket socket, Exception exception) {
         if(!started) {
-            logger.log(Level.SEVERE, "error starting server", error);
-            System.exit(1);
+            if (startException == null) {
+                startException = exception;
+            } else {
+                startException.addSuppressed(exception);
+            }
+
+            synchronized (startMonitor) {
+                startMonitor.notifyAll();
+            }
             return;
         }
 
         Client client = clients.get(socket);
 
         if(socket == null || client == null) {
-            game.onError(error);
+            game.onError(exception);
         } else {
-            game.onError(client, error);
+            game.onError(client, exception);
         }
     }
 

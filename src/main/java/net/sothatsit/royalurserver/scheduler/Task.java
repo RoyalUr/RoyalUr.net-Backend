@@ -3,7 +3,12 @@ package net.sothatsit.royalurserver.scheduler;
 import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.ExceptionDetailer;
 
-public abstract class Task implements Runnable {
+/**
+ * A task to be ran by a Scheduler.
+ *
+ * @author Paddy Lamont
+ */
+public abstract class Task {
 
     private final ExceptionDetailer exceptionDetailer;
     private final String name;
@@ -17,23 +22,41 @@ public abstract class Task implements Runnable {
         this.cancelled = false;
     }
 
+    /**
+     * Cancel this task such that it no longer be ran.
+     */
     public void cancel() {
         this.cancelled = true;
     }
 
+    /**
+     * @return Whether this task has been cancelled.
+     */
     public boolean isCancelled() {
         return cancelled;
     }
 
+    /**
+     * @return Whether this task should be ran on the current cycle.
+     */
     public abstract boolean shouldRun();
 
-    public abstract boolean shouldRepeat();
+    /**
+     * @return Whether this task will repeat on any future cycle.
+     */
+    public abstract boolean willRepeat();
 
-    public abstract void run();
+    /**
+     * Should be overridden in sub-classes to implement the behaviour desired when this task is ran.
+     */
+    protected abstract void runImpl();
 
-    public final void runSafe() throws Exception {
+    /**
+     * Run this task.
+     */
+    public final void run() throws Exception {
         try {
-            run();
+            runImpl();
         } catch(Exception exception) {
             throw exceptionDetailer.detail(exception);
         }
@@ -41,38 +64,6 @@ public abstract class Task implements Runnable {
 
     @Override
     public String toString() {
-        return "task " + name;
+        return "Task(" + name + ")";
     }
-
-    private static final class RunnableTask extends Task {
-        private Runnable runnable;
-
-        public RunnableTask(String name, Runnable runnable) {
-            super(name);
-
-            Checks.ensureNonNull(runnable, "runnable");
-
-            this.runnable = runnable;
-        }
-
-        @Override
-        public boolean shouldRun() {
-            return true;
-        }
-
-        @Override
-        public boolean shouldRepeat() {
-            return false;
-        }
-
-        @Override
-        public void run() {
-            runnable.run();
-        }
-    }
-
-    public static Task create(String name, Runnable runnable) {
-        return new RunnableTask(name, runnable);
-    }
-
 }

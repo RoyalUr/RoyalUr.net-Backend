@@ -6,6 +6,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.*;
 
+/**
+ * Adds detail to messages logged to console.
+ *
+ * @author Paddy Lamont
+ */
 public class Logging {
 
     private static final SimpleDateFormat defaultDateFormatter = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
@@ -42,6 +47,9 @@ public class Logging {
         }
     };
 
+    /**
+     * @return The Logger {@param name} with a custom log formatter.
+     */
     public static Logger getLogger(String name) {
         Logger logger = Logger.getLogger(name);
 

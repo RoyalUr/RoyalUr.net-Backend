@@ -6,6 +6,11 @@ import net.sothatsit.royalurserver.game.Board;
 import net.sothatsit.royalurserver.game.PlayerState;
 import net.sothatsit.royalurserver.util.Checks;
 
+/**
+ * A packet sent to the client indicating the state of the game.
+ *
+ * @author Paddy Lamont
+ */
 public class PacketOutState {
 
     private static PacketOut create(

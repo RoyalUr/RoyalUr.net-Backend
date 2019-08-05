@@ -8,11 +8,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Represents a move of a tile from one location to another.
+ *
+ * @author Paddy Lamont
+ */
 public final class Move implements PacketWritable {
 
     public final Location from;
     public final Location to;
 
+    /**
+     * Create a Move from location {@param from} to location {@param to}.
+     */
     public Move(Location from, Location to) {
         Checks.ensureNonNull(from, "from");
         Checks.ensureNonNull(to, "to");
@@ -46,7 +54,11 @@ public final class Move implements PacketWritable {
     public String toString() {
         return from + " -> " + to;
     }
-    
+
+    /**
+     * @return A List of all possible moves for the player {@param playerState} on the
+     *         given board {@param board} with the dice value {@param diceValue}.
+     */
     public static List<Move> getMoves(Board board, PlayerState playerState, int diceValue) {
         Checks.ensureNonNull(board, "board");
         Checks.ensureNonNull(playerState, "playerState");

@@ -3,7 +3,6 @@ package net.sothatsit.royalurserver.game;
 import net.sothatsit.royalurserver.Logging;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
-import net.sothatsit.royalurserver.network.incoming.PacketInGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInMove;
 import net.sothatsit.royalurserver.network.incoming.PacketInRoll;
 import net.sothatsit.royalurserver.network.outgoing.*;
@@ -11,12 +10,14 @@ import net.sothatsit.royalurserver.scheduler.Scheduler;
 import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.Time;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class Game {
 
+    public static final SecureRandom RANDOM = new SecureRandom();
     private static final long GAME_TIMEOUT_MS = 60 * 1000;
 
     private final Scheduler scheduler;
@@ -56,11 +57,6 @@ public class Game {
 
         logger.info("starting game");
 
-        sendGamePacket(lightClient);
-        sendGamePacket(darkClient);
-
-        broadcast(createStatePacket());
-
         scheduler.scheduleRepeating("game timeout", () -> {
             Time disconnectTime = Time.now();
 
@@ -72,7 +68,7 @@ public class Game {
                 disconnectTime = darkClient.getDisconnectTime();
             }
 
-            if(disconnectTime.getTimeSinceMillis() > GAME_TIMEOUT_MS) {
+            if(disconnectTime.getMillisSince() > GAME_TIMEOUT_MS) {
                 stop();
             }
         }, 5000, TimeUnit.MILLISECONDS);
@@ -89,6 +85,10 @@ public class Game {
 
     public GameID getID() {
         return id;
+    }
+
+    public boolean isPlayer(Client client) {
+        return client == lightClient || client == darkClient;
     }
 
     private Player getPlayer(Client client) {
@@ -109,7 +109,7 @@ public class Game {
 
     private void sendGamePacket(Client client) {
         Player player = getPlayer(client);
-        PlayerState state = getState(Player.getOtherPlayer(player));
+        PlayerState state = getState(player.getOtherPlayer());
 
         client.send(PacketOutGame.create(id, player, state.name));
     }
@@ -122,7 +122,7 @@ public class Game {
         }
     }
 
-    public void onReconnect(Client client) {
+    public void onJoin(Client client) {
         Checks.ensureNonNull(client, "client");
 
         sendGamePacket(client);
@@ -151,7 +151,7 @@ public class Game {
             throw new IllegalStateException(client + " tried to roll when not the current player");
         }
 
-        this.roll = DiceRoll.roll();
+        this.roll = DiceRoll.roll(RANDOM);
         this.potentialMoves = Move.getMoves(board, state, roll.getValue());
         this.state = GameState.MOVE;
 
@@ -164,7 +164,7 @@ public class Game {
 
             scheduler.scheduleIn("state after no available moves", () -> {
                 Game.this.state = GameState.ROLL;
-                Game.this.currentPlayer = Player.getOtherPlayer(currentPlayer);
+                Game.this.currentPlayer = currentPlayer.getOtherPlayer();
 
                 broadcast(createStatePacket());
             }, 5000, TimeUnit.MILLISECONDS);
@@ -184,7 +184,7 @@ public class Game {
 
     private void onMove(Client client, PacketInMove packet) {
         Player player = getPlayer(client);
-        Player otherPlayer = Player.getOtherPlayer(player);
+        Player otherPlayer = player.getOtherPlayer();
 
         PlayerState state = getState(player);
         PlayerState otherState = getState(otherPlayer);
@@ -234,7 +234,7 @@ public class Game {
         }
 
         if(!move.to.isLotus()) {
-            this.currentPlayer = Player.getOtherPlayer(state.player);
+            this.currentPlayer = state.player.getOtherPlayer();
         }
 
         // Win state
@@ -267,11 +267,6 @@ public class Game {
                     PacketInMove move = PacketInMove.read(packet);
 
                     onMove(client, move);
-                    break;
-                case GAME:
-                    PacketInGame game = PacketInGame.read(packet);
-
-                    System.out.println("Recieved game packet: " + game.gameID);
                     break;
                 default:
                     client.error("Unexpected packet " + packet);

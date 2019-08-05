@@ -3,23 +3,25 @@ package net.sothatsit.royalurserver.game;
 import net.sothatsit.royalurserver.network.PacketWritable;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.outgoing.PacketOut;
-import net.sothatsit.royalurserver.util.Checks;
 
-import java.security.SecureRandom;
+import java.util.Random;
 
+/**
+ * Represents the unique ID given to a Game.
+ *
+ * @author Paddy Lamont
+ */
 public final class GameID implements PacketWritable {
 
-    private static final SecureRandom random = new SecureRandom();
-
     public static final String ID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    public static final int ID_LENGTH = 5;
-    public static final int MAX_ID = (int) Math.pow(ID_CHARS.length(), ID_LENGTH);
+    public static final int ID_LENGTH = 6;
 
     private final int numericID;
 
+    /**
+     * Create a new GameID backed by the given numerical ID {@param numericID}.
+     */
     public GameID(int numericID) {
-        Checks.ensure(numericID >= 0 && numericID < MAX_ID, "Numeric game ID " + numericID + " is out of the valid range");
-
         this.numericID = numericID;
     }
 
@@ -30,7 +32,7 @@ public final class GameID implements PacketWritable {
         int num = this.numericID;
 
         for(int index = 0; index < ID_LENGTH; ++index) {
-            int charOrdinal = num % ID_CHARS.length();
+            int charOrdinal = Math.toIntExact(num % ID_CHARS.length());
             num /= ID_CHARS.length();
 
             chars[index] = ID_CHARS.charAt(charOrdinal);
@@ -41,9 +43,7 @@ public final class GameID implements PacketWritable {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof GameID
-                && ((GameID) obj).numericID == numericID;
-
+        return obj instanceof GameID && ((GameID) obj).numericID == numericID;
     }
 
     @Override
@@ -53,13 +53,19 @@ public final class GameID implements PacketWritable {
 
     @Override
     public void writeTo(PacketOut packet) {
-        packet.write(toString());
+        packet.writeString(toString());
     }
 
+    /**
+     * @return The next GameID read from {@param packet}.
+     */
     public static GameID read(PacketIn packet) {
         return fromString(packet.nextString(ID_LENGTH));
     }
 
+    /**
+     * @return The GameID represented by {@param string}.
+     */
     public static GameID fromString(String string) {
         if(string.length() != ID_LENGTH)
             throw new IllegalArgumentException("Game ID \"" + string + "\" is not of the expected length");
@@ -80,7 +86,17 @@ public final class GameID implements PacketWritable {
         return new GameID(numericId);
     }
 
-    public static GameID random() {
-        return new GameID(random.nextInt(MAX_ID));
+    /**
+     * @return A random new GameID.
+     */
+    public static GameID random(Random random) {
+        int gameID = random.nextInt();
+
+        // We only want positive game IDs.
+        if (gameID < 0) {
+            gameID = -(gameID + 1);
+        }
+
+        return new GameID(gameID);
     }
 }
