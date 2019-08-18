@@ -87,6 +87,16 @@ public class Game {
         return id;
     }
 
+    public boolean isWon() {
+        return state == GameState.DONE && (light.isMaxScore() || dark.isMaxScore());
+    }
+
+    public boolean isInactive() {
+        // TODO : Should check the last time they were connected to this game.
+        //        They could have changed games and this won't pick that up.
+        return lightClient.isTimedOut() || darkClient.isTimedOut();
+    }
+
     public boolean isPlayer(Client client) {
         return client == lightClient || client == darkClient;
     }
@@ -116,9 +126,13 @@ public class Game {
 
     private PacketOut createStatePacket() {
         if (state != GameState.ROLL) {
-            return PacketOutState.createRolled(light, dark, board, currentPlayer, roll, potentialMoves.size() > 0);
+            return PacketOutState.createRolled(
+                    light, dark, board, isWon(), currentPlayer, roll, potentialMoves.size() > 0
+            );
         } else {
-            return PacketOutState.createAwaitingRoll(light, dark, board, currentPlayer);
+            return PacketOutState.createAwaitingRoll(
+                    light, dark, board, isWon(), currentPlayer
+            );
         }
     }
 
@@ -159,7 +173,7 @@ public class Game {
 
         if(potentialMoves.size() == 0) {
             scheduler.scheduleIn("no available moves", () -> {
-                broadcast(PacketOutMessage.create("No\r\nmoves"));
+                broadcast(PacketOutMessage.create("No moves"));
             }, 2500, TimeUnit.MILLISECONDS);
 
             scheduler.scheduleIn("state after no available moves", () -> {
@@ -242,10 +256,6 @@ public class Game {
             this.state = GameState.DONE;
             this.currentPlayer = state.player;
             this.logger.info("Winner winner chicken dinner " + currentPlayer);
-
-            scheduler.scheduleIn("winner", () -> {
-                broadcast(PacketOutWin.create(state.player));
-            }, 500, TimeUnit.MILLISECONDS);
         } else {
             this.state = GameState.ROLL;
             this.roll = null;

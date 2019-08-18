@@ -19,7 +19,9 @@ public class PlayerState implements PacketWritable {
     private int score;
 
     public PlayerState(Player player, String name) {
-        this(player, name, MAX_TILES, 0);
+        // TODO : DEBUG
+        this(player, name, 1, 6);
+        // this(player, name, MAX_TILES, 0);
     }
 
     public PlayerState(Player player, String name, int tiles, int score) {

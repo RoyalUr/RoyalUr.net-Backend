@@ -17,6 +17,7 @@ public class PacketOutState {
             PlayerState lightPlayer,
             PlayerState darkPlayer,
             Board board,
+            boolean isGameWon,
             Player currentPlayer) {
 
         Checks.ensureNonNull(lightPlayer, "lightPlayer");
@@ -30,6 +31,7 @@ public class PacketOutState {
         packet.write(darkPlayer);
         packet.write(board);
 
+        packet.write(isGameWon);
         packet.write(currentPlayer);
 
         return packet;
@@ -39,9 +41,10 @@ public class PacketOutState {
             PlayerState lightPlayer,
             PlayerState darkPlayer,
             Board board,
+            boolean isGameWon,
             Player currentPlayer) {
 
-        PacketOut packet = create(lightPlayer, darkPlayer, board, currentPlayer);
+        PacketOut packet = create(lightPlayer, darkPlayer, board, isGameWon, currentPlayer);
 
         packet.write(false);
 
@@ -52,13 +55,14 @@ public class PacketOutState {
             PlayerState lightPlayer,
             PlayerState darkPlayer,
             Board board,
+            boolean isGameWon,
             Player currentPlayer,
             DiceRoll diceRoll,
             boolean hasMoves) {
 
         Checks.ensureNonNull(diceRoll, "diceRoll");
 
-        PacketOut packet = create(lightPlayer, darkPlayer, board, currentPlayer);
+        PacketOut packet = create(lightPlayer, darkPlayer, board, isGameWon, currentPlayer);
 
         packet.write(true);
         packet.write(diceRoll);

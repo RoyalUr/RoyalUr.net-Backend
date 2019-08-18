@@ -130,8 +130,7 @@ public class PacketOut {
         GAME("game"),
         MESSAGE("message"),
         STATE("state"),
-        MOVE("move"),
-        WIN("win");
+        MOVE("move");
 
         private final String name;
 

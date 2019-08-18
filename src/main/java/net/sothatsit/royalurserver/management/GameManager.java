@@ -29,22 +29,7 @@ public class GameManager {
     private final Map<Client, Game> clientActiveGames = new ConcurrentHashMap<>();
 
     public GameManager() {
-        scheduler.scheduleRepeating("game-purger", () -> {
-            synchronized (lock) {
-                List<Game> done = new ArrayList<>();
-
-                for(Game game : games.values()) {
-                    if(game.getState() != GameState.DONE)
-                        continue;
-
-                    done.add(game);
-                }
-
-                for(Game game : done) {
-                    stopGame(game);
-                }
-            }
-        }, 5, TimeUnit.SECONDS);
+        scheduler.scheduleRepeating("game-purger", this::purgeInactiveGames, 5, TimeUnit.SECONDS);
     }
 
     public void start() {
@@ -53,6 +38,23 @@ public class GameManager {
 
     public void stop() {
         scheduler.stop();
+    }
+
+    public void purgeInactiveGames() {
+        synchronized (lock) {
+            List<Game> inactive = new ArrayList<>();
+
+            for(Game game : games.values()) {
+                if(!game.isInactive())
+                    continue;
+
+                inactive.add(game);
+            }
+
+            for(Game game : inactive) {
+                stopGame(game);
+            }
+        }
     }
 
     public Game findActiveGame(Client client) {
