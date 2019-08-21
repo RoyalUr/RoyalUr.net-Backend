@@ -174,14 +174,14 @@ public class Game {
         if(potentialMoves.size() == 0) {
             scheduler.scheduleIn("no available moves", () -> {
                 broadcast(PacketOutMessage.create("No moves"));
-            }, 2500, TimeUnit.MILLISECONDS);
+            }, 2000, TimeUnit.MILLISECONDS);
 
             scheduler.scheduleIn("state after no available moves", () -> {
                 Game.this.state = GameState.ROLL;
                 Game.this.currentPlayer = currentPlayer.getOtherPlayer();
 
                 broadcast(createStatePacket());
-            }, 5000, TimeUnit.MILLISECONDS);
+            }, 4000, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -216,10 +216,6 @@ public class Game {
         Move move = findMoveFrom(packet.from);
 
         if(move == null) {
-            for(Move m : potentialMoves) {
-                System.out.println("potential move: " + m);
-            }
-
             client.error("tried to make an illegal move");
             throw new IllegalStateException(client + " tried to make an illegal move");
         }
