@@ -144,6 +144,8 @@ public class GameManager {
             for(Game game : games) {
                 stopGame(game);
             }
+
+            scheduler.stop();
         }
     }
 

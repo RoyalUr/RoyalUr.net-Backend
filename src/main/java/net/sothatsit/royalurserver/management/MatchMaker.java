@@ -45,6 +45,7 @@ public class MatchMaker {
             Client dark = (flag ? client : waitingClient);
 
             gameManager.startGame(light, dark);
+            waitingClient = null;
         }
     }
 

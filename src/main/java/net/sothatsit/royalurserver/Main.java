@@ -1,7 +1,5 @@
 package net.sothatsit.royalurserver;
 
-import net.sothatsit.royalurserver.network.Server;
-
 import java.util.Scanner;
 
 /**
@@ -14,14 +12,9 @@ public class Main {
     public static final int DEFAULT_PORT = 9113;
 
     public static void main(String[] args) {
-        RoyalUr game = new RoyalUr();
-
-        // TODO : Its weird that this isn't handled by RoyalUr itself
-        Server server = new Server(DEFAULT_PORT, game);
+        RoyalUr game = new RoyalUr(DEFAULT_PORT);
 
         try(Scanner scanner = new Scanner(System.in)) {
-            server.start();
-
             while(true) {
                 String input = scanner.nextLine();
 
@@ -31,8 +24,11 @@ public class Main {
                 game.onConsoleInput(input);
             }
         } finally {
-            game.shutdown();
-            server.shutdown();
+            try {
+                game.shutdown();
+            } finally {
+                new ThreadPurger().start();
+            }
         }
     }
 }

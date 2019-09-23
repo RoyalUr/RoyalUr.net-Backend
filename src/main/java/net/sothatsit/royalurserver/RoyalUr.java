@@ -4,6 +4,7 @@ import net.sothatsit.royalurserver.game.Game;
 import net.sothatsit.royalurserver.management.GameManager;
 import net.sothatsit.royalurserver.management.MatchMaker;
 import net.sothatsit.royalurserver.network.Client;
+import net.sothatsit.royalurserver.network.Server;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInJoinGame;
@@ -21,13 +22,16 @@ public class RoyalUr {
 
     public static final Logger logger = Logging.getLogger("main");
 
+    private final Server server;
     private final GameManager gameManager;
     private final MatchMaker matchmaker;
 
-    public RoyalUr() {
+    public RoyalUr(int serverPort) {
+        this.server = new Server(serverPort, this);
         this.gameManager = new GameManager();
         this.matchmaker = new MatchMaker(gameManager);
 
+        this.server.start();
         this.gameManager.start();
     }
 
@@ -35,7 +39,11 @@ public class RoyalUr {
      * Shutdown the RoyalUr application.
      */
     public void shutdown() {
-        gameManager.stopAll();
+        try {
+            gameManager.stopAll();
+        } finally {
+            server.shutdown();
+        }
     }
 
     /**
