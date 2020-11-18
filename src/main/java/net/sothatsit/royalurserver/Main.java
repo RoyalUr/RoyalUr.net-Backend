@@ -12,6 +12,9 @@ public class Main {
     public static final int DEFAULT_PORT = 9113;
 
     public static void main(String[] args) {
+        // Set SLF4J-Simple to have the INFO log level.
+        System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO");
+
         RoyalUr game = new RoyalUr(DEFAULT_PORT);
 
         try(Scanner scanner = new Scanner(System.in)) {
