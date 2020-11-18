@@ -9,7 +9,10 @@ import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInJoinGame;
 import net.sothatsit.royalurserver.util.Checks;
+import net.sothatsit.royalurserver.util.LetsEncryptSSL;
 
+import javax.net.ssl.SSLContext;
+import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,14 +25,26 @@ public class RoyalUr {
 
     public static final Logger logger = Logging.getLogger("main");
 
+    private final Config config;
     private final Server server;
     private final GameManager gameManager;
     private final MatchMaker matchmaker;
 
     public RoyalUr(int serverPort) {
+        this.config = Config.read();
         this.server = new Server(serverPort, this);
         this.gameManager = new GameManager();
         this.matchmaker = new MatchMaker(gameManager);
+
+        // If SSL is configured, set it up.
+        if (config.useSSL()) {
+            File certFile = new File(config.getSSLCertFile());
+            File privKeyFile = new File(config.getSSLPrivateKeyFile());
+            String password = config.getSSLPassword();
+            SSLContext context = LetsEncryptSSL.generateSSLContext(certFile, privKeyFile, password);
+            server.setupSSL(context);
+            System.err.println("Setup SSL encryption.");
+        }
 
         this.server.start();
         this.gameManager.start();

@@ -11,8 +11,11 @@ import net.sothatsit.royalurserver.scheduler.Scheduler;
 import net.sothatsit.royalurserver.util.Checks;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 
+import javax.net.ssl.SSLContext;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
@@ -51,13 +54,12 @@ public class Server extends WebSocketServer {
     private final Map<WebSocket, Client> clients;
     private final Map<WebSocket, Long> limboConnections;
     private final Map<UUID, Client> disconnected;
-    private RepeatingTask clientPurgerTask;
+    private final RepeatingTask clientPurgerTask;
 
     private final Object startMonitor = new Object();
     private Thread serverThread;
     private boolean started = false;
     private Exception startException;
-
 
     public Server(int port, RoyalUr game) {
         super(new InetSocketAddress(port));
@@ -75,6 +77,11 @@ public class Server extends WebSocketServer {
                 "server client purger", this::purgeDisconnected,
                 PURGE_TIMER_INTERVAL_SECS, TimeUnit.SECONDS
         );
+    }
+
+    public void setupSSL(SSLContext context) {
+        setWebSocketFactory(new DefaultSSLWebSocketServerFactory(context));
+        setConnectionLostTimeout(120);
     }
 
     @Override
