@@ -1,6 +1,6 @@
 <p align="center"><a href="https://royalur.net">
-  <img src="https://github.com/Sothatsit/RoyalUrClient/blob/master/logo.png?raw=true" width="600">
-</a></p><hr/>
+  <img src="https://github.com/Sothatsit/RoyalUrClient/blob/master/banner.jpg?raw=true">
+</a></p>
 
 This repository holds the server code for The Royal Game of Ur, https://royalur.net.
 The client code of The Royal Game of Ur can be found in the
