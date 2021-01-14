@@ -17,9 +17,9 @@ import java.util.List;
 public final class Location implements PacketWritable {
 
     /**
-     * The locations of all lotus tiles.
+     * The locations of all rosette tiles.
      */
-    public static final List<Location> LOTUSES = list(
+    public static final List<Location> ROSETTES = list(
             0, 0,
             2, 0,
             1, 3,
@@ -81,11 +81,11 @@ public final class Location implements PacketWritable {
     }
 
     /**
-     * @return Whether this location is a lotus tile.
+     * @return Whether this location is a rosette tile.
      */
-    public boolean isLotus() {
-        for(Location lotus : LOTUSES) {
-            if(equals(lotus))
+    public boolean isRosette() {
+        for(Location rosette : ROSETTES) {
+            if(equals(rosette))
                 return true;
         }
         return false;
