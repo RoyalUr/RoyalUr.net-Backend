@@ -6,7 +6,6 @@ package net.sothatsit.royalurserver.game;
  * @author Paddy Lamont
  */
 public enum GameState {
-
     ROLL,
     MOVE,
     DONE

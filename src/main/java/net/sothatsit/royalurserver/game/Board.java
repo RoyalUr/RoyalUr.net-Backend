@@ -1,6 +1,6 @@
 package net.sothatsit.royalurserver.game;
 
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 import net.sothatsit.royalurserver.network.PacketWritable;
 import net.sothatsit.royalurserver.util.Checks;
 
@@ -52,9 +52,9 @@ public class Board implements PacketWritable {
     }
 
     @Override
-    public void writeTo(PacketOut out) {
+    public void writeTo(PacketWriter out) {
         for(Player owner : tileOwners) {
-            out.writeDigit(Player.toClientID(owner));
+            out.pushDigit(Player.toClientID(owner));
         }
     }
 }

@@ -1,8 +1,7 @@
 package net.sothatsit.royalurserver.game;
 
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 import net.sothatsit.royalurserver.network.PacketWritable;
-import net.sothatsit.royalurserver.util.Checks;
 
 /**
  * Represent a player in a game.
@@ -34,8 +33,8 @@ public enum Player implements PacketWritable {
     }
 
     @Override
-    public void writeTo(PacketOut packet) {
-        packet.writeDigit(id);
+    public void writeTo(PacketWriter packet) {
+        packet.pushDigit(id);
     }
 
     @Override

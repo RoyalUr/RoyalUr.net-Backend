@@ -9,13 +9,11 @@ import net.sothatsit.royalurserver.util.Checks;
  */
 public class RunnableTask extends Task {
 
-    private Runnable runnable;
+    private final Runnable runnable;
 
     public RunnableTask(String name, Runnable runnable) {
         super(name);
-
         Checks.ensureNonNull(runnable, "runnable");
-
         this.runnable = runnable;
     }
 

@@ -1,6 +1,7 @@
 package net.sothatsit.royalurserver.management;
 
 import net.sothatsit.royalurserver.network.Client;
+import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
 
 import java.security.SecureRandom;
 
@@ -26,7 +27,9 @@ public class MatchMaker {
         return waitingClient == client;
     }
 
-    public void findMatchFor(Client client) {
+    public void findMatchFor(Client client, PacketInFindGame packet) {
+        client.setName(packet.name);
+
         synchronized (lock) {
             if(waitingClient == null) {
                 waitingClient = client;

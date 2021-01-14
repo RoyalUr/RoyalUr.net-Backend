@@ -7,16 +7,23 @@ import net.sothatsit.royalurserver.util.Checks;
  *
  * @author Paddy Lamont
  */
-public class PacketOutError {
+public class PacketOutError extends PacketOut {
 
-    public static PacketOut create(String error) {
+    private final String error;
+
+    public PacketOutError(String error) {
+        super(Type.ERROR);
         Checks.ensureNonNull(error, "error");
-
-        PacketOut packet = new PacketOut(PacketOut.Type.ERROR);
-
-        packet.writeString(error);
-
-        return packet;
+        this.error = error;
     }
 
+    @Override
+    protected void writeContents(PacketWriter writer) {
+        writer.pushRaw(error);
+    }
+
+    @Override
+    public String toString() {
+        return "PacketOutError(error=\"" + error + "\")";
+    }
 }

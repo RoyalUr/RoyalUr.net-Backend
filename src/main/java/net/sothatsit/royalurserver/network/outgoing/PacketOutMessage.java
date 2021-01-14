@@ -7,15 +7,27 @@ import net.sothatsit.royalurserver.util.Checks;
  *
  * @author Paddy Lamont
  */
-public class PacketOutMessage {
+public class PacketOutMessage extends PacketOut {
 
-    public static PacketOut create(String message) {
-        Checks.ensureNonNull(message, "message");
+    private final String text;
+    private final String subText;
 
-        PacketOut packet = new PacketOut(PacketOut.Type.MESSAGE);
+    public PacketOutMessage(String text, String subText) {
+        super(Type.MESSAGE);
+        Checks.ensureNonNull(text, "text");
+        Checks.ensureNonNull(subText, subText);
+        this.text = text;
+        this.subText = subText;
+    }
 
-        packet.writeVarString(message);
+    @Override
+    protected void writeContents(PacketWriter writer) {
+        writer.pushVarString(text);
+        writer.pushVarString(subText);
+    }
 
-        return packet;
+    @Override
+    public String toString() {
+        return "PacketOutMessage(text=\"" + text + "\", subText=\"" + subText + "\")";
     }
 }

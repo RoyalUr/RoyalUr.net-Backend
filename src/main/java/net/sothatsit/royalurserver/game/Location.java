@@ -1,7 +1,7 @@
 package net.sothatsit.royalurserver.game;
 
-import net.sothatsit.royalurserver.network.incoming.PacketIn;
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.incoming.PacketReader;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 import net.sothatsit.royalurserver.network.PacketWritable;
 import net.sothatsit.royalurserver.util.Checks;
 
@@ -121,9 +121,9 @@ public final class Location implements PacketWritable {
     }
 
     @Override
-    public void writeTo(PacketOut packet) {
-        packet.writeDigit(x);
-        packet.writeDigit(y);
+    public void writeTo(PacketWriter packet) {
+        packet.pushDigit(x);
+        packet.pushDigit(y);
     }
 
     @Override
@@ -134,7 +134,7 @@ public final class Location implements PacketWritable {
     /**
      * @return The next Location read from {@param packet}.
      */
-    public static Location read(PacketIn packet) {
+    public static Location read(PacketReader packet) {
         int x = packet.nextInt(1);
         int y = packet.nextInt(1);
 

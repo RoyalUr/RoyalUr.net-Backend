@@ -2,6 +2,8 @@ package net.sothatsit.royalurserver;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Purges stalled threads on shutdown.
@@ -13,6 +15,8 @@ public class ThreadPurger {
     private static final int INTERRUPT_TIME = 5 * 1000;
     private static final int KILL_TIME = 10 * 1000;
     private static final int KILL_WAIT_TIME = 5 * 1000;
+
+    private static final Logger logger = Logging.getLogger("ThreadPurger");
 
     private final Thread purgeThread;
     private long startPurgeTime;
@@ -63,7 +67,7 @@ public class ThreadPurger {
 
             if (time < KILL_TIME) {
                 for (Thread thread : threads) {
-                    System.err.println("ThreadPurger: Interrupting thread " + thread);
+                    logger.log(Level.WARNING, "ThreadPurger: Interrupting thread " + thread);
                     thread.interrupt();
                 }
 
@@ -77,7 +81,7 @@ public class ThreadPurger {
 
             // Force all threads to stop
             for (Thread thread : threads) {
-                System.err.println("ThreadPurger: Forcing thread " + thread + " to stop");
+                logger.log(Level.WARNING, "ThreadPurger: Forcing thread " + thread + " to stop");
                 thread.stop();
             }
 

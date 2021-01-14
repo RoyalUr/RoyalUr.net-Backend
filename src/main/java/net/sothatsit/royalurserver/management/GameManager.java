@@ -52,7 +52,7 @@ public class GameManager {
             }
 
             for(Game game : inactive) {
-                stopGame(game);
+                stopGame(game, "game is inactive");
             }
         }
     }
@@ -61,7 +61,7 @@ public class GameManager {
         Game game = clientActiveGames.get(client);
 
         if(game != null && game.getState() == GameState.DONE) {
-            stopGame(game);
+            stopGame(game, "game is done");
             return null;
         }
 
@@ -82,11 +82,11 @@ public class GameManager {
             games.put(id, game);
         }
 
-        onJoinGame(light, id);
-        onJoinGame(dark, id);
+        onJoinGame(light, id, false);
+        onJoinGame(dark, id, false);
     }
 
-    public void onJoinGame(Client client, GameID gameID) {
+    public void onJoinGame(Client client, GameID gameID, boolean isReconnect) {
         synchronized (lock) {
             Game activeGame = findActiveGame(client);
             if (activeGame != null) {
@@ -101,11 +101,15 @@ public class GameManager {
 
             Game joinGame = games.get(gameID);
             if (joinGame == null) {
-                client.send(PacketOutInvalidGame.create());
+                client.send(new PacketOutInvalidGame(gameID));
                 return;
             }
 
-            joinGame.onJoin(client);
+            if (isReconnect) {
+                joinGame.onReconnect(client);
+            } else {
+                joinGame.onJoin(client);
+            }
             clientActiveGames.put(client, joinGame);
         }
     }
@@ -132,31 +136,31 @@ public class GameManager {
 
             for (Game game : toStop) {
                 game.onTimeout(client);
-                stopGame(game);
+                stopGame(game, "client timed out");
             }
         }
     }
 
-    public void stopAll() {
+    public void stopAll(String reason) {
         synchronized (lock) {
             List<Game> games = new ArrayList<>(this.games.values());
 
             for(Game game : games) {
-                stopGame(game);
+                stopGame(game, reason);
             }
 
             scheduler.stop();
         }
     }
 
-    public void stopGame(Game game) {
+    public void stopGame(Game game, String reason) {
         Checks.ensureNonNull(game, "game");
 
         synchronized (lock) {
             clientActiveGames.remove(game.darkClient);
             clientActiveGames.remove(game.lightClient);
             games.remove(game.id);
-            game.stop();
+            game.stop(reason);
         }
     }
 

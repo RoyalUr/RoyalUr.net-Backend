@@ -23,6 +23,7 @@ import java.util.logging.Logger;
  */
 public class RoyalUr {
 
+    public static final String VERSION = "1.1.0";
     public static final Logger logger = Logging.getLogger("main");
 
     private final Config config;
@@ -43,7 +44,7 @@ public class RoyalUr {
             String password = config.getSSLPassword();
             SSLContext context = LetsEncryptSSL.generateSSLContext(certFile, privKeyFile, password);
             server.setupSSL(context);
-            System.err.println("Setup SSL encryption.");
+            logger.info("SSL encryption successfully configured.");
         }
 
         this.server.start();
@@ -55,7 +56,7 @@ public class RoyalUr {
      */
     public void shutdown() {
         try {
-            gameManager.stopAll();
+            gameManager.stopAll("server restarting");
         } finally {
             server.shutdown();
         }
@@ -124,13 +125,12 @@ public class RoyalUr {
 
         switch (packet.type) {
             case JOIN_GAME:
-                PacketInJoinGame joinGamePacket = PacketInJoinGame.read(packet);
-                gameManager.onJoinGame(client, joinGamePacket.gameID);
+                PacketInJoinGame joinGamePacket = (PacketInJoinGame) packet;
+                gameManager.onJoinGame(client, joinGamePacket.gameID, true);
                 break;
 
             case FIND_GAME:
-                PacketInFindGame.read(packet);
-                matchmaker.findMatchFor(client);
+                matchmaker.findMatchFor(client, (PacketInFindGame) packet);
                 break;
 
             case CREATE_GAME:

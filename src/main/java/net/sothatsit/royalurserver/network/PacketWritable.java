@@ -1,6 +1,6 @@
 package net.sothatsit.royalurserver.network;
 
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 
 /**
  * An interface that indicates sub-classes can be written to a packet.
@@ -9,5 +9,5 @@ import net.sothatsit.royalurserver.network.outgoing.PacketOut;
  */
 public interface PacketWritable {
 
-    public void writeTo(PacketOut packet);
+    public void writeTo(PacketWriter packet);
 }

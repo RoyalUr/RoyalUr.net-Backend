@@ -1,7 +1,5 @@
 package net.sothatsit.royalurserver.network.incoming;
 
-import net.sothatsit.royalurserver.util.Checks;
-
 import java.util.UUID;
 
 /**
@@ -9,26 +7,23 @@ import java.util.UUID;
  *
  * @author Paddy Lamont
  */
-public class PacketInReOpen {
+public class PacketInReOpen extends PacketIn {
 
-    public final UUID previousID;
+    public int protocolVersion;
+    public UUID previousID;
 
-    public PacketInReOpen(UUID previousID) {
-        Checks.ensureNonNull(previousID, "previousId");
-
-        this.previousID = previousID;
+    public PacketInReOpen() {
+        super(Type.REOPEN);
     }
 
-    public static PacketInReOpen read(PacketIn packet) {
-        return Checks.detailThrown(() -> {
-            Checks.ensureNonNull(packet, "packet");
-            packet.expectType(PacketIn.Type.REOPEN);
+    @Override
+    public void readContents(PacketReader reader) {
+        this.protocolVersion = reader.nextInt(4);
+        this.previousID = reader.nextUUID();
+    }
 
-            UUID uuid = packet.nextUUID();
-
-            packet.expectEmpty();
-
-            return new PacketInReOpen(uuid);
-        }, "exception reading re-open packet " + packet);
+    @Override
+    public String toString() {
+        return "PacketInReOpen(previousID=" + previousID + ")";
     }
 }

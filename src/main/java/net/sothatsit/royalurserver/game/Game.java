@@ -4,7 +4,6 @@ import net.sothatsit.royalurserver.Logging;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInMove;
-import net.sothatsit.royalurserver.network.incoming.PacketInRoll;
 import net.sothatsit.royalurserver.network.outgoing.*;
 import net.sothatsit.royalurserver.scheduler.Scheduler;
 import net.sothatsit.royalurserver.util.Checks;
@@ -18,7 +17,7 @@ import java.util.logging.Logger;
 public class Game {
 
     public static final SecureRandom RANDOM = new SecureRandom();
-    private static final long GAME_TIMEOUT_MS = 60 * 1000;
+    private static final long GAME_TIMEOUT_MS = 5 * 60 * 1000;
 
     private final Scheduler scheduler;
     private final Logger logger;
@@ -48,8 +47,8 @@ public class Game {
         this.lightClient = lightClient;
         this.darkClient = darkClient;
 
-        this.light = new PlayerState(Player.LIGHT, "Light");
-        this.dark = new PlayerState(Player.DARK, "Dark");
+        this.light = new PlayerState(Player.LIGHT, lightClient.getName());
+        this.dark = new PlayerState(Player.DARK, darkClient.getName());
         this.board = new Board();
 
         this.state = GameState.ROLL;
@@ -58,25 +57,24 @@ public class Game {
         logger.info("starting game");
 
         scheduler.scheduleRepeating("game timeout", () -> {
-            Time disconnectTime = Time.now();
+            if (lightClient.isConnected() || darkClient.isConnected())
+                return;
 
-            if(!lightClient.isConnected()) {
-                disconnectTime = lightClient.getDisconnectTime();
-            }
-
-            if(!darkClient.isConnected() && disconnectTime.isAfter(darkClient.getDisconnectTime())) {
-                disconnectTime = darkClient.getDisconnectTime();
-            }
-
+            Time disconnectTime = Time.latest(
+                    lightClient.getDisconnectTime(),
+                    darkClient.getDisconnectTime()
+            );
             if(disconnectTime.getMillisSince() > GAME_TIMEOUT_MS) {
-                stop();
+                stop("client timeout");
             }
         }, 5000, TimeUnit.MILLISECONDS);
     }
 
-    public void stop() {
+    public void stop(String reason) {
+        broadcast(new PacketOutGameEnd(reason));
         scheduler.stop();
         state = GameState.DONE;
+        logger.info("stopping game due to: " + reason);
     }
 
     public GameState getState() {
@@ -113,38 +111,49 @@ public class Game {
     }
 
     private void broadcast(PacketOut packet) {
-        lightClient.send(packet);
-        darkClient.send(packet);
+        lightClient.trySend(packet);
+        darkClient.trySend(packet);
     }
 
     private void sendGamePacket(Client client) {
         Player player = getPlayer(client);
-        PlayerState state = getState(player.getOtherPlayer());
-
-        client.send(PacketOutGame.create(id, player, state.name));
+        PlayerState ownState = getState(player);
+        PlayerState opponentState = getState(player.getOtherPlayer());
+        client.send(new PacketOutGame(id, player, ownState.name, opponentState.name));
     }
 
-    private PacketOut createStatePacket() {
+    private PacketOutState createStatePacket() {
         if (state != GameState.ROLL) {
-            return PacketOutState.createRolled(
-                    light, dark, board, isWon(), currentPlayer, roll, potentialMoves.size() > 0
-            );
+            return new PacketOutState(light, dark, board, isWon(), currentPlayer, roll, potentialMoves.size() > 0);
         } else {
-            return PacketOutState.createAwaitingRoll(
-                    light, dark, board, isWon(), currentPlayer
-            );
+            return new PacketOutState(light, dark, board, isWon(), currentPlayer);
         }
     }
 
     public void onJoin(Client client) {
         Checks.ensureNonNull(client, "client");
-
         sendGamePacket(client);
         client.send(createStatePacket());
     }
 
+    public void onReconnect(Client client) {
+        this.onJoin(client);
+
+        if (client == lightClient && darkClient.isConnected()) {
+            darkClient.send(new PacketOutPlayerStatus(Player.LIGHT, true));
+        } else if (client == darkClient && lightClient.isConnected()) {
+            lightClient.send(new PacketOutPlayerStatus(Player.DARK, true));
+        }
+    }
+
     public void onDisconnect(Client client) {
         Checks.ensureNonNull(client, "client");
+
+        if (client == lightClient && darkClient.isConnected()) {
+            darkClient.send(new PacketOutPlayerStatus(Player.LIGHT, false));
+        } else if (client == darkClient && lightClient.isConnected()) {
+            lightClient.send(new PacketOutPlayerStatus(Player.DARK, false));
+        }
     }
 
     public void onTimeout(Client client) {
@@ -173,7 +182,8 @@ public class Game {
 
         if(potentialMoves.size() == 0) {
             scheduler.scheduleIn("no available moves", () -> {
-                broadcast(PacketOutMessage.create("No moves"));
+                String reason = (roll.getValue() == 0 ? "Rolled a zero" : "All moves blocked");
+                broadcast(new PacketOutMessage("No moves", reason));
             }, 2000, TimeUnit.MILLISECONDS);
 
             scheduler.scheduleIn("state after no available moves", () -> {
@@ -192,7 +202,6 @@ public class Game {
             if(move.from.equals(from))
                 return move;
         }
-
         return null;
     }
 
@@ -214,7 +223,6 @@ public class Game {
         }
 
         Move move = findMoveFrom(packet.from);
-
         if(move == null) {
             client.error("tried to make an illegal move");
             throw new IllegalStateException(client + " tried to make an illegal move");
@@ -257,7 +265,7 @@ public class Game {
             this.roll = null;
         }
 
-        broadcast(PacketOutMove.create(move));
+        broadcast(new PacketOutMove(move));
         broadcast(createStatePacket());
     }
 
@@ -265,14 +273,10 @@ public class Game {
         try {
             switch (packet.type) {
                 case ROLL:
-                    PacketInRoll.read(packet);
-
                     onRoll(client);
                     break;
                 case MOVE:
-                    PacketInMove move = PacketInMove.read(packet);
-
-                    onMove(client, move);
+                    onMove(client, (PacketInMove) packet);
                     break;
                 default:
                     client.error("Unexpected packet " + packet);

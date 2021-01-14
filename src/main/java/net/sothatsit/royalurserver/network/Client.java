@@ -15,12 +15,21 @@ import java.util.UUID;
  */
 public class Client {
 
-    public static final long DISCONNECT_TIMEOUT = 1000 * 30;
+    /**
+     * Each breaking change to the protocol between
+     * the server and the client should result in an
+     * increase to the current protocol version.
+     */
+    public static final int PROTOCOL_VERSION = 1;
+
+    public static final long DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
+    public static final int MAX_NAME_LENGTH = 12;
 
     public final UUID id;
 
     private WebSocket socket;
     private boolean connected;
+    private String name = "unknown";
 
     private Time connectTime;
     private Time disconnectTime;
@@ -32,39 +41,33 @@ public class Client {
         this.id = id;
         this.connectTime = Time.now();
         this.socket = socket;
+        if (socket == null || socket.isClosed() || socket.isClosing()) {
+            this.socket = null;
+            this.disconnectTime = Time.now();
+        }
     }
 
-    /**
-     * @return Whether this client is currently connected.
-     */
+    /** @return Whether this client is currently connected. **/
     public boolean isConnected() {
         return connected;
     }
 
-    /**
-     * @return The time this client connected, or null if the client is disconnected.
-     */
+    /** @return The time this client connected, or null if the client is disconnected. **/
     public Time getConnectTime() {
         return connectTime;
     }
 
-    /**
-     * @return The time this client disconnected, or null if the client is connected.
-     */
+    /** @return The time this client disconnected, or null if the client is connected. **/
     public Time getDisconnectTime() {
         return disconnectTime;
     }
 
-    /**
-     * @return Whether this client has been disconnected long enough to be removed.
-     */
+    /** @return Whether this client has been disconnected long enough to be removed. **/
     public boolean isTimedOut() {
-        return disconnectTime != null && disconnectTime.getMillisSince() > DISCONNECT_TIMEOUT;
+        return disconnectTime != null && disconnectTime.getMillisSince() > DISCONNECT_TIMEOUT_MS;
     }
 
-    /**
-     * Update this client to indicate that they've just connected through the socket {@param socket}.
-     */
+    /** Update this client to indicate that they've just connected through the socket {@param socket}. **/
     protected void onConnect(WebSocket socket) {
         Checks.ensureNonNull(socket, "socket");
 
@@ -74,9 +77,7 @@ public class Client {
         this.disconnectTime = null;
     }
 
-    /**
-     * Update this client to indicate that they've just disconnected.
-     */
+    /** Update this client to indicate that they've just disconnected. **/
     protected void onDisconnect() {
         this.socket = null;
         this.connected = false;
@@ -84,30 +85,48 @@ public class Client {
         this.disconnectTime = Time.now();
     }
 
-    /**
-     * Send the error {@param error} to the client, and close their connection.
-     */
-    public void error(String error) {
-        Checks.ensureNonNull(error, "error");
-        Checks.ensureState(socket != null, "client is already disconnected");
-
-        send(PacketOutError.create(error));
-        socket.close();
+    /** Set the name of this client to {@param name}. **/
+    public void setName(String name) {
+        this.name = name.substring(0, Math.min(name.length(), MAX_NAME_LENGTH));
     }
 
-    /**
-     * Send the packet {@param packet} to the client.
-     */
+    /** @return the name of this client. **/
+    public String getName() {
+        return name;
+    }
+
+    /** Send the error {@param error} to the client, and close their connection. **/
+    public void error(String error) {
+        Checks.ensureNonNull(error, "error");
+        if (socket == null || socket.isClosing() || socket.isClosed())
+            return;
+
+        send(new PacketOutError(error));
+        socket.close();
+        socket = null;
+    }
+
+    /** Send the packet {@param packet} to the client. **/
     public void send(PacketOut packet) {
         Checks.ensureNonNull(packet, "packet");
-        Checks.ensureState(socket != null, "cannot send packet to disconnected client");
+        Checks.ensureState(
+                isConnected() && socket != null && !socket.isClosed() && !socket.isClosing(),
+                "cannot send packet to disconnected client"
+        );
+        socket.send(packet.write());
+    }
 
-        socket.send(packet.encode());
+    /** Try to send the packet {@param packet} to the client, with no error if the packet could not be sent. **/
+    public void trySend(PacketOut packet) {
+        Checks.ensureNonNull(packet, "packet");
+        if (!isConnected() || socket == null || socket.isClosed() || socket.isClosing())
+            return;
+        send(packet);
     }
 
     @Override
     public String toString() {
-        return "Client(" + id.toString().substring(0, 8) + ")";
+        return "Client(id=" + id.toString().substring(0, 8) + ", name=\"" + name + "\")";
     }
 
 }

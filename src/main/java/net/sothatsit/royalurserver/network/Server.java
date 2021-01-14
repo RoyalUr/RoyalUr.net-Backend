@@ -4,6 +4,7 @@ import net.sothatsit.royalurserver.Logging;
 import net.sothatsit.royalurserver.RoyalUr;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInOpen;
+import net.sothatsit.royalurserver.network.incoming.PacketReader;
 import net.sothatsit.royalurserver.network.incoming.PacketInReOpen;
 import net.sothatsit.royalurserver.network.outgoing.PacketOutSetID;
 import net.sothatsit.royalurserver.scheduler.RepeatingTask;
@@ -15,7 +16,6 @@ import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 
 import javax.net.ssl.SSLContext;
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
@@ -192,19 +192,16 @@ public class Server extends WebSocketServer {
     public void onStart() {
         started = true;
         scheduler.addTask(clientPurgerTask);
-
         synchronized (startMonitor) {
             startMonitor.notifyAll();
         }
-
-        System.out.println("Listening on " + getPort());
+        logger.info("Listening on " + getPort());
     }
 
     public void shutdown() {
         if(clientPurgerTask != null) {
             clientPurgerTask.cancel();
         }
-
         stop();
     }
 
@@ -217,7 +214,6 @@ public class Server extends WebSocketServer {
     public void onClose(WebSocket socket, int code, String reason, boolean remote) {
         limboConnections.remove(socket);
         Client client = clients.remove(socket);
-
         if(client == null)
             return;
 
@@ -229,18 +225,23 @@ public class Server extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket socket, String message) {
-        PacketIn packet;
+        // Ignore messages from closing or closed sockets.
+        if (socket.isClosed() || socket.isClosing())
+            return;
 
+        PacketIn packet;
         try {
-            packet = new PacketIn(message);
+            PacketReader reader = new PacketReader(message);
+            packet = reader.type.newPacket();
+            packet.read(reader);
         } catch(Exception exception) {
-            logger.log(Level.SEVERE, "exception reading packet message " + message, exception);
-            socket.close();
+            String exceptionName = exception.getClass().getSimpleName();
+            logger.log(Level.WARNING, exceptionName + " reading packet \"" + message + "\": " + exception.getMessage());
+            new Client(UUID.randomUUID(), socket).error("invalid packet");
             return;
         }
 
         Client client = clients.get(socket);
-
         if(client == null) {
             connectClient(socket, packet);
             return;
@@ -249,8 +250,10 @@ public class Server extends WebSocketServer {
         try {
             game.onMessage(client, packet);
         } catch(Exception exception) {
-            logger.log(Level.SEVERE, "exception handling packet " + packet + " for " + client, exception);
-            socket.close();
+            String exceptionName = exception.getClass().getSimpleName();
+            logger.log(Level.SEVERE, exceptionName + " handling packet " + packet + " for " + client, exception);
+            new Client(UUID.randomUUID(), socket).error("internal error");
+            return;
         }
     }
 
@@ -259,16 +262,18 @@ public class Server extends WebSocketServer {
         Checks.ensureNonNull(packet, "packet");
 
         Client client = null;
+        int protocolVersion;
         boolean isReconnect = false;
 
         switch(packet.type) {
             case OPEN:
-                PacketInOpen.read(packet);
+                PacketInOpen open = (PacketInOpen) packet;
+                protocolVersion = open.protocolVersion;
                 break;
             case REOPEN:
-                PacketInReOpen reopen = PacketInReOpen.read(packet);
-
+                PacketInReOpen reopen = (PacketInReOpen) packet;
                 client = disconnected.get(reopen.previousID);
+                protocolVersion = reopen.protocolVersion;
 
                 if(client != null && !client.isTimedOut()) {
                     disconnected.remove(reopen.previousID);
@@ -276,23 +281,24 @@ public class Server extends WebSocketServer {
                 } else {
                     client = null;
                 }
-
                 break;
             default:
-                new IllegalStateException("Expected open or reopen packet, received " + packet).printStackTrace();
-                socket.close();
+                new Client(UUID.randomUUID(), socket).error("Expected open or reopen packet");
                 return;
         }
-
         if(client == null) {
             client = new Client(UUID.randomUUID(), socket);
+        }
+        if (protocolVersion != Client.PROTOCOL_VERSION) {
+            client.error("RoyalUr protocol version mismatch, " + protocolVersion + " != " + Client.PROTOCOL_VERSION);
+            return;
         }
 
         clients.put(socket, client);
         limboConnections.remove(socket);
 
         client.onConnect(socket);
-        client.send(PacketOutSetID.create(client.id));
+        client.send(new PacketOutSetID(client.id));
 
         game.onConnect(client, isReconnect);
     }

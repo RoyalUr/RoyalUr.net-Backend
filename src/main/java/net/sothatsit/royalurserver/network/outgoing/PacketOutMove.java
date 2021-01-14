@@ -8,17 +8,23 @@ import net.sothatsit.royalurserver.util.Checks;
  *
  * @author Paddy Lamont
  */
-public class PacketOutMove {
+public class PacketOutMove extends PacketOut {
 
-    public static PacketOut create(Move move) {
+    private final Move move;
+
+    public PacketOutMove(Move move) {
+        super(Type.MOVE);
         Checks.ensureNonNull(move, "move");
-
-        PacketOut packet = new PacketOut(PacketOut.Type.MOVE);
-
-        packet.write(move.from);
-        packet.write(move.to);
-
-        return packet;
+        this.move = move;
     }
 
+    @Override
+    protected void writeContents(PacketWriter writer) {
+        writer.pushValue(move);
+    }
+
+    @Override
+    public String toString() {
+        return "PacketOutMove(move=" + move + ")";
+    }
 }

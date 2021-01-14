@@ -1,33 +1,27 @@
 package net.sothatsit.royalurserver.network.incoming;
 
 import net.sothatsit.royalurserver.game.Location;
-import net.sothatsit.royalurserver.util.Checks;
 
 /**
  * A packet sent to move a tile.
  *
  * @author Paddy Lamont
  */
-public class PacketInMove {
+public class PacketInMove extends PacketIn {
 
-    public final Location from;
+    public Location from;
 
-    public PacketInMove(Location from) {
-        Checks.ensureNonNull(from, "from");
-
-        this.from = from;
+    public PacketInMove() {
+        super(Type.MOVE);
     }
 
-    public static PacketInMove read(PacketIn packet) {
-        return Checks.detailThrown(() -> {
-            Checks.ensureNonNull(packet, "packet");
-            packet.expectType(PacketIn.Type.MOVE);
+    @Override
+    public void readContents(PacketReader reader) {
+        this.from = Location.read(reader);
+    }
 
-            Location tile = Location.read(packet);
-
-            packet.expectEmpty();
-
-            return new PacketInMove(tile);
-        }, "exception reading move packet " + packet);
+    @Override
+    public String toString() {
+        return "PacketInMove(from=" + from + ")";
     }
 }

@@ -1,6 +1,6 @@
 package net.sothatsit.royalurserver.game;
 
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 import net.sothatsit.royalurserver.network.PacketWritable;
 import net.sothatsit.royalurserver.util.Checks;
 
@@ -19,9 +19,7 @@ public class DiceRoll implements PacketWritable {
     private final DiceValue[] values;
     private final int value;
 
-    /**
-     * Construct a dice roll with the given dice values.
-     */
+    /** Construct a dice roll with the given dice values. **/
     public DiceRoll(DiceValue[] values) {
         Checks.ensureArrayNonNull(values, "values");
         Checks.ensure(values.length == DICE_COUNT, "values must be of length 4");
@@ -30,24 +28,20 @@ public class DiceRoll implements PacketWritable {
         this.value = countUp(values);
     }
 
-    /**
-     * @return The states of all dice.
-     */
+    /** @return The states of all dice. **/
     public DiceValue[] getValues() {
         return values;
     }
 
-    /**
-     * @return The number of dice that are face up.
-     */
+    /** @return The number of dice that are face up. **/
     public int getValue() {
         return value;
     }
 
     @Override
-    public void writeTo(PacketOut packet) {
+    public void writeTo(PacketWriter packet) {
         for(DiceValue value : values) {
-            packet.writeDigit(value.getId());
+            packet.pushDigit(value.getId());
         }
     }
 
@@ -56,29 +50,23 @@ public class DiceRoll implements PacketWritable {
         return Arrays.toString(values);
     }
 
-    private static int countUp(DiceValue[] values) {
+    /** @return The count of dice that have a light side up. **/
+    public static int countUp(DiceValue[] values) {
         int value = 0;
-
         for(DiceValue diceValue : values) {
-            if(!diceValue.isUp())
-                continue;
-
-            value += 1;
+            if(diceValue.isUp()) {
+                value += 1;
+            }
         }
-
         return value;
     }
 
-    /**
-     * @return A random DiceRoll containing all random dice values.
-     */
+    /** @return A random DiceRoll containing all random dice values. **/
     public static DiceRoll roll(Random random) {
         DiceValue[] values = new DiceValue[4];
-
         for(int index = 0; index < values.length; ++index) {
             values[index] = DiceValue.random(random);
         }
-
         return new DiceRoll(values);
     }
 

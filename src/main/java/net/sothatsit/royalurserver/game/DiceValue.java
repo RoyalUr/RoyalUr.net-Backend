@@ -1,9 +1,6 @@
 package net.sothatsit.royalurserver.game;
 
 import net.sothatsit.royalurserver.util.Checks;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -21,25 +18,8 @@ public enum DiceValue {
     DOWN_2("down 2", 5, false),
     DOWN_3("down 3", 6, false);
 
-    public static final DiceValue[] UP;
-    public static final DiceValue[] DOWN;
-    static {
-        List<DiceValue> up = new ArrayList<>();
-        List<DiceValue> down = new ArrayList<>();
-        for (DiceValue value : values()) {
-            if (value.isUp) {
-                up.add(value);
-            } else {
-                down.add(value);
-            }
-        }
-
-        Checks.ensure(up.size() > 0, "There must be at least one up DiceValue");
-        Checks.ensure(down.size() > 0, "There must be at least one down DiceValue");
-
-        UP = up.toArray(new DiceValue[0]);
-        DOWN = down.toArray(new DiceValue[0]);
-    }
+    public static final DiceValue[] UP = {UP_1, UP_2, UP_3};
+    public static final DiceValue[] DOWN = {DOWN_1, DOWN_2, DOWN_3};
 
     private final String name;
     private final int id;
@@ -54,23 +34,17 @@ public enum DiceValue {
         this.isUp = isUp;
     }
 
-    /**
-     * @return A name representing the given dice value.
-     */
+    /** @return A name representing the given dice value. **/
     public String getName() {
         return name;
     }
 
-    /**
-     * @return An ID that represents this dice value.
-     */
+    /** @return An ID that represents this dice value. **/
     public int getId() {
         return id;
     }
 
-    /**
-     * @return Whether this dice value is up.
-     */
+    /*** @return Whether this dice value is up. */
     public boolean isUp() {
         return isUp;
     }
@@ -80,12 +54,9 @@ public enum DiceValue {
         return "DiceValue(" + name + ")";
     }
 
-    /**
-     * @return A random dice value. Has a 50% change of being up, 50% chance down.
-     */
+    /** @return A random dice value. Has a 50% change of being up, 50% chance down. **/
     public static DiceValue random(Random random) {
         Checks.ensureNonNull(random, "random");
-
         if(random.nextBoolean()) {
             return UP[random.nextInt(UP.length)];
         } else {

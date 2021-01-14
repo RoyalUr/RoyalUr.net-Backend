@@ -9,16 +9,23 @@ import java.util.UUID;
  *
  * @author Paddy Lamont
  */
-public class PacketOutSetID {
+public class PacketOutSetID extends PacketOut {
 
-    public static PacketOut create(UUID id) {
+    private final UUID id;
+
+    public PacketOutSetID(UUID id) {
+        super(Type.SET_ID);
         Checks.ensureNonNull(id, "id");
-
-        PacketOut packet = new PacketOut(PacketOut.Type.SET_ID);
-
-        packet.writeUUID(id);
-
-        return packet;
+        this.id = id;
     }
 
+    @Override
+    protected void writeContents(PacketWriter writer) {
+        writer.pushUUID(id);
+    }
+
+    @Override
+    public String toString() {
+        return "PacketOutSetID(id=" + id + ")";
+    }
 }

@@ -1,7 +1,7 @@
 package net.sothatsit.royalurserver.game;
 
 import net.sothatsit.royalurserver.network.PacketWritable;
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 import net.sothatsit.royalurserver.util.Checks;
 
 import java.util.ArrayList;
@@ -30,9 +30,9 @@ public final class Move implements PacketWritable {
     }
 
     @Override
-    public void writeTo(PacketOut packet) {
-        packet.write(from);
-        packet.write(to);
+    public void writeTo(PacketWriter packet) {
+        packet.pushValue(from);
+        packet.pushValue(to);
     }
 
     @Override

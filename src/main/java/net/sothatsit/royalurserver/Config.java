@@ -8,6 +8,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Allows use of a config file to edit settings for the RoyalUr server.
@@ -18,6 +20,8 @@ public class Config {
     private static final String SSL_CERT_FILE_KEY = "ssl-cert-file";
     private static final String SSL_PRIVATE_KEY_FILE_KEY = "ssl-private-key-file";
     private static final String SSL_PASSWORD_KEY = "ssl-password";
+
+    private static final Logger logger = Logging.getLogger("config");
 
     private final JSONObject contents;
 
@@ -67,9 +71,9 @@ public class Config {
     public static Config read() {
         String configLocation = System.getenv("ROYAL_UR_SERVER_CONFIG");
         if (configLocation == null || configLocation.trim().isEmpty()) {
-            System.err.println(
-                    "No config location specified in the ROYAL_UR_SERVER_CONFIG environment variable. "
-                    + "Using the default config."
+            logger.log(
+                    Level.WARNING,
+                    "No config file set via the ROYAL_UR_SERVER_CONFIG env variable. Using the default config."
             );
             return new Config();
         }

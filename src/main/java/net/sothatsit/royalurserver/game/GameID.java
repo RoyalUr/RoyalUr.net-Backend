@@ -1,8 +1,8 @@
 package net.sothatsit.royalurserver.game;
 
 import net.sothatsit.royalurserver.network.PacketWritable;
-import net.sothatsit.royalurserver.network.incoming.PacketIn;
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.incoming.PacketReader;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 
 import java.util.Random;
 
@@ -30,14 +30,11 @@ public final class GameID implements PacketWritable {
         char[] chars = new char[ID_LENGTH];
 
         int num = this.numericID;
-
         for(int index = 0; index < ID_LENGTH; ++index) {
             int charOrdinal = Math.toIntExact(num % ID_CHARS.length());
             num /= ID_CHARS.length();
-
             chars[index] = ID_CHARS.charAt(charOrdinal);
         }
-
         return new String(chars);
     }
 
@@ -52,14 +49,14 @@ public final class GameID implements PacketWritable {
     }
 
     @Override
-    public void writeTo(PacketOut packet) {
-        packet.writeString(toString());
+    public void writeTo(PacketWriter packet) {
+        packet.pushRaw(toString());
     }
 
     /**
      * @return The next GameID read from {@param packet}.
      */
-    public static GameID read(PacketIn packet) {
+    public static GameID read(PacketReader packet) {
         return fromString(packet.nextString(ID_LENGTH));
     }
 

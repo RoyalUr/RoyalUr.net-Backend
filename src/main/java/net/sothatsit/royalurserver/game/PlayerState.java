@@ -1,6 +1,6 @@
 package net.sothatsit.royalurserver.game;
 
-import net.sothatsit.royalurserver.network.outgoing.PacketOut;
+import net.sothatsit.royalurserver.network.outgoing.PacketWriter;
 import net.sothatsit.royalurserver.network.PacketWritable;
 import net.sothatsit.royalurserver.util.Checks;
 
@@ -85,8 +85,8 @@ public class PlayerState implements PacketWritable {
     }
 
     @Override
-    public void writeTo(PacketOut packet) {
-        packet.writeDigit(tiles);
-        packet.writeDigit(score);
+    public void writeTo(PacketWriter packet) {
+        packet.pushDigit(tiles);
+        packet.pushDigit(score);
     }
 }
