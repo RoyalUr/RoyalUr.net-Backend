@@ -102,7 +102,7 @@ public final class Move implements PacketWritable {
             Location to = path.get(toIndex);
             Player toOwner = board.getOwner(to);
 
-            if(toOwner == playerState.player || (toOwner != null && to.isLotus()))
+            if(toOwner == playerState.player || (toOwner != null && to.isRosette()))
                 continue;
 
             moves.add(new Move(from, to));

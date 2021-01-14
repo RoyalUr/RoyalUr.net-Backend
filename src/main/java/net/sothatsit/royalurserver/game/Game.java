@@ -251,7 +251,7 @@ public class Game {
             state.addScore();
         }
 
-        if(!move.to.isLotus()) {
+        if(!move.to.isRosette()) {
             this.currentPlayer = state.player.getOtherPlayer();
         }
 
