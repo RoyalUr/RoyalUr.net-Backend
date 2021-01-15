@@ -36,50 +36,38 @@ public class PlayerState implements PacketWritable {
         this.score = score;
     }
 
-    /**
-     * @return The number of un-played tiles this player has.
-     */
+    /** @return The number of un-played tiles this player has. **/
     public int getTiles() {
         return tiles;
     }
 
-    /**
-     * @return The number of tiles this player has taken around and off the board.
-     */
+    /** @return The number of tiles this player has taken around and off the board. **/
     public int getScore() {
         return score;
     }
 
-    /**
-     * Add another un-played tile to this player.
-     */
+    /** Add another un-played tile to this player. **/
     public void addTile() {
         Checks.ensure(tiles < MAX_TILES, "tiles must remain lower than MAX_TILES (" + MAX_TILES + ")");
 
         this.tiles += 1;
     }
 
-    /**
-     * Remove an un-played tile from this player.
-     */
+    /** Remove an un-played tile from this player. **/
     public void useTile() {
         Checks.ensure(tiles > 0, "tiles must remain greater than 0");
 
         this.tiles -= 1;
     }
 
-    /**
-     * Add a scored tile to this player.
-     */
+    /** Add a scored tile to this player. **/
     public void addScore() {
         Checks.ensure(score < MAX_TILES, "score must remain lower than MAX_TILES (" + MAX_TILES + ")");
 
         this.score += 1;
     }
 
-    /**
-     * @return Whether this player has reached the maximum score (i.e. won the game).
-     */
+    /** @return Whether this player has reached the maximum score (i.e. won the game). **/
     public boolean isMaxScore() {
         return score == MAX_TILES;
     }

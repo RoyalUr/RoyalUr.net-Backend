@@ -16,10 +16,8 @@ import java.util.List;
  */
 public final class Location implements PacketWritable {
 
-    /**
-     * The locations of all rosette tiles.
-     */
-    public static final List<Location> ROSETTES = list(
+    /** The locations of all rosette tiles. **/
+    public static final List<Location> ROSETTE_TILES = list(
             0, 0,
             2, 0,
             1, 3,
@@ -27,9 +25,7 @@ public final class Location implements PacketWritable {
             2, 6
     );
 
-    /**
-     * The path that all light tiles must take around the board.
-     */
+    /** The path that all light tiles must take around the board. **/
     public static List<Location> LIGHT_PATH = path(
             0, 4,
             0, 0,
@@ -41,9 +37,7 @@ public final class Location implements PacketWritable {
     public static final Location LIGHT_START = LIGHT_PATH.get(0);
     public static final Location LIGHT_END = LIGHT_PATH.get(LIGHT_PATH.size() - 1);
 
-    /**
-     * The path that all dark tiles must take around the board.
-     */
+    /** The path that all dark tiles must take around the board. **/
     public static List<Location> DARK_PATH = path(
             2, 4,
             2, 0,
@@ -59,9 +53,7 @@ public final class Location implements PacketWritable {
     public final int y;
     public final int index;
 
-    /**
-     * Create a location at {@param x}, {@param y} on the board.
-     */
+    /** Create a location at {@param x}, {@param y} on the board. **/
     public Location(int x, int y) {
         Checks.ensure(x >= 0, "x must be >= 0");
         Checks.ensure(y >= 0, "y must be >= 0");
@@ -73,34 +65,26 @@ public final class Location implements PacketWritable {
         this.index = y * Board.WIDTH + x;
     }
 
-    /**
-     * @return This location shifted by {@param dx}, {@param dy}.
-     */
+    /** @return This location shifted by {@param dx}, {@param dy}. **/
     public Location add(int dx, int dy) {
         return new Location(x + dx, y + dy);
     }
 
-    /**
-     * @return Whether this location is a rosette tile.
-     */
+    /** @return Whether this location is a rosette tile. **/
     public boolean isRosette() {
-        for(Location rosette : ROSETTES) {
+        for(Location rosette : ROSETTE_TILES) {
             if(equals(rosette))
                 return true;
         }
         return false;
     }
 
-    /**
-     * @return Whether this location is the start for {@param player}.
-     */
+    /** @return Whether this location is the start for {@param player}. **/
     public boolean isStart(Player player) {
         return equals(player == Player.LIGHT ? LIGHT_START : DARK_START);
     }
 
-    /**
-     * @return Whether this location is the end for {@param player}.
-     */
+    /** @return Whether this location is the end for {@param player}. **/
     public boolean isEnd(Player player) {
         return equals(player == Player.LIGHT ? LIGHT_END : DARK_END);
     }
@@ -131,9 +115,7 @@ public final class Location implements PacketWritable {
         return "[" + x + ", " + y + "]";
     }
 
-    /**
-     * @return The next Location read from {@param packet}.
-     */
+    /** @return The next Location read from {@param packet}. **/
     public static Location read(PacketReader packet) {
         int x = packet.nextInt(1);
         int y = packet.nextInt(1);
@@ -141,16 +123,12 @@ public final class Location implements PacketWritable {
         return new Location(x, y);
     }
 
-    /**
-     * @return The path that {@param player}'s tiles must take.
-     */
+    /** @return The path that {@param player}'s tiles must take. **/
     public static List<Location> getPath(Player player) {
         return (player == Player.LIGHT ? LIGHT_PATH : DARK_PATH);
     }
 
-    /**
-     * Utility function to tersely construct a list of locations.
-     */
+    /** Utility function to tersely construct a list of locations. **/
     private static List<Location> list(int... coordinates) {
         Checks.ensureNonNull(coordinates, "coordinates");
         Checks.ensure(coordinates.length % 2 == 0, "coordinates must have an even length");
@@ -165,9 +143,7 @@ public final class Location implements PacketWritable {
         return locations;
     }
 
-    /**
-     * Utility function to tersely construct a path list of locations.
-     */
+    /** Utility function to tersely construct a path list of locations. **/
     private static List<Location> path(int... coordinates) {
         Checks.ensureNonNull(coordinates, "coordinates");
         Checks.ensure(coordinates.length % 2 == 0, "coordinates must have an even length");
@@ -195,9 +171,7 @@ public final class Location implements PacketWritable {
         return locations;
     }
 
-    /**
-     * @return -1 if {@param num} is negative, 1 if {@param num} is positive, else 0.
-     */
+    /** @return -1 if {@param num} is negative, 1 if {@param num} is positive, else 0. */
     private static int signum(int num) {
         return Integer.compare(num, 0);
     }

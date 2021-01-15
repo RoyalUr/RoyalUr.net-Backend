@@ -43,14 +43,12 @@ public class GameManager {
     public void purgeInactiveGames() {
         synchronized (lock) {
             List<Game> inactive = new ArrayList<>();
-
             for(Game game : games.values()) {
-                if(!game.isInactive())
+                if (!game.isInactive())
                     continue;
 
                 inactive.add(game);
             }
-
             for(Game game : inactive) {
                 stopGame(game, "game is inactive");
             }
@@ -59,12 +57,10 @@ public class GameManager {
 
     public Game findActiveGame(Client client) {
         Game game = clientActiveGames.get(client);
-
         if(game != null && game.getState() == GameState.DONE) {
             stopGame(game, "game is done");
             return null;
         }
-
         return game;
     }
 
@@ -77,7 +73,6 @@ public class GameManager {
             while (games.containsKey(id)) {
                 id = GameID.random(RANDOM);
             }
-
             game = new Game(id, light, dark);
             games.put(id, game);
         }
@@ -127,13 +122,11 @@ public class GameManager {
     public void onClientTimeout(Client client) {
         synchronized (lock) {
             Set<Game> toStop = new HashSet<>();
-
             for (Game game : games.values()) {
                 if (game.isPlayer(client)) {
                     toStop.add(game);
                 }
             }
-
             for (Game game : toStop) {
                 game.onTimeout(client);
                 stopGame(game, "client timed out");
@@ -144,11 +137,9 @@ public class GameManager {
     public void stopAll(String reason) {
         synchronized (lock) {
             List<Game> games = new ArrayList<>(this.games.values());
-
             for(Game game : games) {
                 stopGame(game, reason);
             }
-
             scheduler.stop();
         }
     }

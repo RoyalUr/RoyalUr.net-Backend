@@ -22,7 +22,6 @@ public class Main {
         try(Scanner scanner = new Scanner(System.in)) {
             while(true) {
                 String input = scanner.nextLine();
-
                 if(input.equalsIgnoreCase("stop"))
                     break;
 

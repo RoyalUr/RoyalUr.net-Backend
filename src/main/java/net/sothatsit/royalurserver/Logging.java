@@ -47,9 +47,7 @@ public class Logging {
         }
     };
 
-    /**
-     * @return The Logger {@param name} with a custom log formatter.
-     */
+    /** @return The Logger {@param name} with a custom log formatter. **/
     public static Logger getLogger(String name) {
         Logger logger = Logger.getLogger(name);
 
@@ -77,7 +75,6 @@ public class Logging {
 
         logger.addHandler(handler);
         logger.setUseParentHandlers(false);
-
         return logger;
     }
 }

@@ -53,16 +53,12 @@ public final class GameID implements PacketWritable {
         packet.pushRaw(toString());
     }
 
-    /**
-     * @return The next GameID read from {@param packet}.
-     */
+    /** @return The next GameID read from {@param packet}. **/
     public static GameID read(PacketReader packet) {
         return fromString(packet.nextString(ID_LENGTH));
     }
 
-    /**
-     * @return The GameID represented by {@param string}.
-     */
+    /** @return The GameID represented by {@param string}. **/
     public static GameID fromString(String string) {
         if(string.length() != ID_LENGTH)
             throw new IllegalArgumentException("Game ID \"" + string + "\" is not of the expected length");
@@ -83,9 +79,7 @@ public final class GameID implements PacketWritable {
         return new GameID(numericId);
     }
 
-    /**
-     * @return A random new GameID.
-     */
+    /** @return A random new GameID. **/
     public static GameID random(Random random) {
         int gameID = random.nextInt();
 

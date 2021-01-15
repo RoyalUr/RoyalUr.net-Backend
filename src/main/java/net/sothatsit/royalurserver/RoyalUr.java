@@ -51,9 +51,7 @@ public class RoyalUr {
         this.gameManager.start();
     }
 
-    /**
-     * Shutdown the RoyalUr application.
-     */
+    /** Shutdown the RoyalUr application. **/
     public void shutdown() {
         try {
             gameManager.stopAll("server restarting");
@@ -62,27 +60,21 @@ public class RoyalUr {
         }
     }
 
-    /**
-     * Handle the console input {@param input}.
-     */
+    /** Handle the console input {@param input}. **/
     public void onConsoleInput(String input) {
         Checks.ensureNonNull(input, "input");
 
         logger.info("Input: " + input);
     }
 
-    /**
-     * Handle the connection of the client {@param client}.
-     */
+    /** Handle the connection of the client {@param client}. **/
     public void onConnect(Client client, boolean isReconnect) {
         Checks.ensureNonNull(client, "client");
 
         logger.info(client + " " + (isReconnect ? "reopen" : "open"));
     }
 
-    /**
-     * Handle the disconnection of the client {@param client}.
-     */
+    /** Handle the disconnection of the client {@param client}. **/
     public void onDisconnect(Client client) {
         Checks.ensureNonNull(client, "client");
 
@@ -92,9 +84,7 @@ public class RoyalUr {
         matchmaker.onClientDisconnect(client);
     }
 
-    /**
-     * Handle the timeout of the client {@param client}.
-     */
+    /** Handle the timeout of the client {@param client}. **/
     public void onReconnectTimeout(Client client) {
         Checks.ensureNonNull(client, "client");
 
@@ -103,13 +93,10 @@ public class RoyalUr {
         gameManager.onClientTimeout(client);
     }
 
-    /**
-     * Handle the message {@param packet} from the client {@param client}.
-     */
+    /** Handle the message {@param packet} from the client {@param client}. **/
     public void onMessage(Client client, PacketIn packet) {
         Checks.ensureNonNull(client, "client");
         Checks.ensureNonNull(packet, "packet");
-
         logger.info(client + " -> " + packet);
 
         Game game = gameManager.findActiveGame(client);
@@ -143,18 +130,14 @@ public class RoyalUr {
         }
     }
 
-    /**
-     * Report the error {@param error}.
-     */
+    /** Report the error {@param error}. **/
     public void onError(Exception error) {
         Checks.ensureNonNull(error, "error");
 
         logger.log(Level.SEVERE, "there was an error", error);
     }
 
-    /**
-     * Report the error {@param error} caused by {@param client}.
-     */
+    /** Report the error {@param error} caused by {@param client}. **/
     public void onError(Client client, Exception error) {
         Checks.ensureNonNull(client, "client");
         Checks.ensureNonNull(error, "error");

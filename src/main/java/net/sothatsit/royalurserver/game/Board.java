@@ -17,32 +17,25 @@ public class Board implements PacketWritable {
 
     private final Player[] tileOwners = new Player[TILE_COUNT];
 
-    /**
-     * @return Whether {@param location} has an owner.
-     */
+    /** @return Whether {@param location} has an owner. **/
     public boolean hasOwner(Location location) {
         return getOwner(location) != null;
     }
 
-    /**
-     * @return The owner of {@param location}, or null.
-     */
+    /** @return The owner of {@param location}, or null. **/
     public Player getOwner(Location location) {
         Checks.ensureNonNull(location, "location");
 
         return tileOwners[location.index];
     }
 
-    /**
-     * Clear the owner of {@param location}.
-     */
+    /** Clear the owner of {@param location}. **/
     public void clearOwner(Location location) {
         setOwner(location, null);
     }
 
     /**
      * Set the owner of {@param location} to {@param owner}.
-     *
      * @param owner can be null.
      */
     public void setOwner(Location location, Player owner) {

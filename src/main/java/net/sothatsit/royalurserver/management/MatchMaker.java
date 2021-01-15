@@ -43,7 +43,6 @@ public class MatchMaker {
             }
 
             boolean flag = RANDOM.nextBoolean();
-
             Client light = (flag ? waitingClient : client);
             Client dark = (flag ? client : waitingClient);
 
