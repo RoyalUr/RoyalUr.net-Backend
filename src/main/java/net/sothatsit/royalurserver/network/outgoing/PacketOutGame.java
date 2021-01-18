@@ -15,8 +15,12 @@ public class PacketOutGame extends PacketOut {
     private final Player yourPlayer;
     private final String yourName;
     private final String opponentName;
+    private final boolean opponentConnected;
 
-    public PacketOutGame(GameID gameID, Player yourPlayer, String yourName, String opponentName) {
+    public PacketOutGame(
+            GameID gameID, Player yourPlayer, String yourName,
+            String opponentName, boolean opponentConnected) {
+
         super(Type.GAME);
         Checks.ensureNonNull(gameID, "gameID");
         Checks.ensureNonNull(yourPlayer, "yourPlayer");
@@ -25,17 +29,24 @@ public class PacketOutGame extends PacketOut {
         this.yourPlayer = yourPlayer;
         this.yourName = yourName;
         this.opponentName = opponentName;
+        this.opponentConnected = opponentConnected;
     }
 
     @Override
     protected void writeContents(PacketWriter writer) {
-        writer.pushValue(gameID).pushValue(yourPlayer).pushVarString(yourName).pushVarString(opponentName);
+        writer.pushValue(gameID)
+                .pushValue(yourPlayer)
+                .pushVarString(yourName)
+                .pushVarString(opponentName)
+                .pushBool(opponentConnected);
     }
 
     @Override
     public String toString() {
         return "PacketOutGame(gameID=" + gameID + ", "
                 + "yourPlayer=" + yourPlayer + ", "
-                + "opponentName=\"" + opponentName + "\")";
+                + "yourName=" + yourName + ", "
+                + "opponentName=\"" + opponentName + "\", "
+                + "opponentConnected=" + opponentConnected + ")";
     }
 }

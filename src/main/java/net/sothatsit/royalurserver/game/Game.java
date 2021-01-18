@@ -102,8 +102,15 @@ public class Game {
     private Player getPlayer(Client client) {
         if(client == lightClient) return Player.LIGHT;
         if(client == darkClient) return Player.DARK;
-
         throw new IllegalArgumentException(client + " is not a player of this game");
+    }
+
+    private Client getClient(Player player) {
+        switch (player) {
+            case DARK: return darkClient;
+            case LIGHT: return lightClient;
+            default: throw new IllegalArgumentException("Unknown player " + player);
+        }
     }
 
     private PlayerState getState(Player player) {
@@ -117,9 +124,10 @@ public class Game {
 
     private void sendGamePacket(Client client) {
         Player player = getPlayer(client);
-        PlayerState ownState = getState(player);
-        PlayerState opponentState = getState(player.getOtherPlayer());
-        client.send(new PacketOutGame(id, player, ownState.name, opponentState.name));
+        String ownName = getState(player).name;
+        String opponentName = getState(player.getOtherPlayer()).name;
+        boolean opponentConnected = getClient(player.getOtherPlayer()).isConnected();
+        client.send(new PacketOutGame(id, player, ownName, opponentName, opponentConnected));
     }
 
     private PacketOutState createStatePacket() {
