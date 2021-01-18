@@ -192,7 +192,7 @@ public class Game {
             scheduler.scheduleIn("no available moves", () -> {
                 String reason = (roll.getValue() == 0 ? "Rolled a zero" : "All moves blocked");
                 broadcast(new PacketOutMessage("No moves", reason));
-            }, 2000, TimeUnit.MILLISECONDS);
+            }, 1500, TimeUnit.MILLISECONDS);
 
             scheduler.scheduleIn("state after no available moves", () -> {
                 Game.this.state = GameState.ROLL;
