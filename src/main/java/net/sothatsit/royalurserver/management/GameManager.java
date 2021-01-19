@@ -50,7 +50,7 @@ public class GameManager {
                 inactive.add(game);
             }
             for(Game game : inactive) {
-                stopGame(game, "game is inactive");
+                stopGame(game, "Game is inactive");
             }
         }
     }
@@ -58,7 +58,7 @@ public class GameManager {
     public Game findActiveGame(Client client) {
         Game game = clientActiveGames.get(client);
         if(game != null && game.getState() == GameState.DONE) {
-            stopGame(game, "game is done");
+            stopGame(game, "Game is done");
             return null;
         }
         return game;
@@ -129,7 +129,7 @@ public class GameManager {
             }
             for (Game game : toStop) {
                 game.onTimeout(client);
-                stopGame(game, "client timed out");
+                stopGame(game, "Opponent left the game");
             }
         }
     }

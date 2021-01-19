@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  */
 public class RoyalUr {
 
-    public static final String VERSION = "1.1.1";
+    public static final String VERSION = "1.1.2";
     public static final Logger logger = Logging.getLogger("main");
 
     private final Config config;
@@ -54,7 +54,7 @@ public class RoyalUr {
     /** Shutdown the RoyalUr application. **/
     public void shutdown() {
         try {
-            gameManager.stopAll("server restarting");
+            gameManager.stopAll("Server is restarting");
         } finally {
             server.shutdown();
         }

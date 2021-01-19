@@ -65,7 +65,7 @@ public class Game {
                     darkClient.getDisconnectTime()
             );
             if(disconnectTime.getMillisSince() > GAME_TIMEOUT_MS) {
-                stop("client timeout");
+                stop("Opponent left the game");
             }
         }, 5000, TimeUnit.MILLISECONDS);
     }
@@ -190,7 +190,7 @@ public class Game {
 
         if(potentialMoves.size() == 0) {
             scheduler.scheduleIn("no available moves", () -> {
-                String reason = (roll.getValue() == 0 ? "Rolled a zero" : "All moves blocked");
+                String reason = (roll.getValue() == 0 ? "You rolled a zero" : "All moves are blocked");
                 broadcast(new PacketOutMessage("No moves", reason));
             }, 1500, TimeUnit.MILLISECONDS);
 
