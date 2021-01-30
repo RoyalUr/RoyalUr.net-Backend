@@ -36,6 +36,7 @@ public abstract class PacketOut {
         ERROR("error"),
         SET_ID("set_id"),
         INVALID_GAME("invalid_game"),
+        GAME_PENDING("game_pending"),
         GAME("game"),
         GAME_END("game_end"),
         MESSAGE("message"),

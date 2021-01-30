@@ -20,7 +20,7 @@ public class Client {
      * the server and the client should result in an
      * increase to the current protocol version.
      */
-    public static final int PROTOCOL_VERSION = 2;
+    public static final int PROTOCOL_VERSION = 3;
 
     public static final long DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
     public static final int MAX_NAME_LENGTH = 12;

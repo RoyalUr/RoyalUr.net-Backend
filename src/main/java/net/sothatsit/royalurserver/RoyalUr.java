@@ -6,6 +6,7 @@ import net.sothatsit.royalurserver.management.MatchMaker;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.network.Server;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
+import net.sothatsit.royalurserver.network.incoming.PacketInCreateGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInJoinGame;
 import net.sothatsit.royalurserver.util.Checks;
@@ -23,7 +24,7 @@ import java.util.logging.Logger;
  */
 public class RoyalUr {
 
-    public static final String VERSION = "1.1.2";
+    public static final String VERSION = "1.2";
     public static final Logger logger = Logging.getLogger("main");
 
     private final Config config;
@@ -113,7 +114,11 @@ public class RoyalUr {
         switch (packet.type) {
             case JOIN_GAME:
                 PacketInJoinGame joinGamePacket = (PacketInJoinGame) packet;
-                gameManager.onJoinGame(client, joinGamePacket.gameID, true);
+                if (matchmaker.isGamePending(joinGamePacket.gameID)) {
+                    matchmaker.startPendingGame(joinGamePacket.gameID, client);
+                } else {
+                    gameManager.onJoinGame(client, joinGamePacket.gameID, true);
+                }
                 break;
 
             case FIND_GAME:
@@ -121,7 +126,7 @@ public class RoyalUr {
                 break;
 
             case CREATE_GAME:
-                client.error("Cannot currently create games");
+                matchmaker.createPendingMatch(client, (PacketInCreateGame) packet);
                 break;
 
             default:

@@ -64,10 +64,16 @@ public class GameManager {
         return game;
     }
 
-    public void startGame(Client light, Client dark) {
-        GameID id = GameID.random(RANDOM);
-        Game game;
+    public GameID nextGameID() {
+        return GameID.random(RANDOM);
+    }
 
+    public void startGame(Client light, Client dark) {
+        startGame(nextGameID(), light, dark);
+    }
+
+    public void startGame(GameID id, Client light, Client dark) {
+        Game game;
         synchronized (lock) {
             // This is kinda dodgy, but repeats should only occur _very_ rarely
             while (games.containsKey(id)) {
