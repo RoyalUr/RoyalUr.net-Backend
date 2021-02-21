@@ -1,33 +1,34 @@
-# 🎲 The Royal Game of Ur
-A website for playing the ancient Mesopatamian board game, the Royal Game of Ur! 
+# 🎲 RoyalUr.net
+A website for playing the ancient Mesopotamian board game, The Royal Game of Ur! 
 
 <p align="center"><a href="https://royalur.net">
-  <img src="https://github.com/Sothatsit/RoyalUrClient/blob/master/banner.jpg?raw=true">
+  <img src="https://royalur.net/banner.jpg" />
 </a></p>
 
-This repository holds the server code for The Royal Game of Ur, https://royalur.net.
-The client code of The Royal Game of Ur can be found in the
+This repository holds the server code for RoyalUr.net, https://royalur.net.
+The client code of RoyalUr.net can be found in the
 [RoyalUrClient repository](https://github.com/Sothatsit/RoyalUrClient).
 
-The Royal Game of Ur is based upon an ancient Sumerian board game in the British Museum.
-The original board game can be dated to 2600 BC, and was discovered in a royal tomb in
-the city-state of Ur in ancient Mesopotamia.  Learn more about the game on
-[Wikipedia](https://en.wikipedia.org/wiki/Royal_Game_of_Ur), or watch a fun match
+RoyalUr.net was created based upon the ancient Sumerian board game, The Royal Game of Ur,
+in the British Museum. The original board game can be dated to 2600 BC, and was discovered
+in a royal tomb in the city-state of Ur in ancient Mesopotamia.  Learn more about the game
+on [Wikipedia](https://en.wikipedia.org/wiki/Royal_Game_of_Ur), or watch a fun match
 between Tom Scott and Irving Finkel on [YouTube](https://youtu.be/WZskjLq040I)!
 
 The game also has a Discord and a Reddit that you might want to check out! The Discord
-contains a changelog with a summary of all the changes being made to the website, as
-well as discussion about RoyalUr development.
+can be used to chat about the game, find worthy opponents to challenge, discuss the
+development of RoyalUr.net, and it also contains a changelog with a summary of the changes
+being made to the website.
 
 <p float="left">
-  <a href="https://discord.gg/saWJGZcy3V">
-    <img src="https://discord.com/assets/f8389ca1a741a115313bede9ac02e2c0.svg" height="80" valign="middle" />
+  <a href="https://discord.gg/Ea49VVru5N">
+    <img src="https://royalur.net/res/discord.svg" height="64" valign="middle" />
   </a>
   <a href="https://www.reddit.com/r/GameofUr/">
-    <img src="https://www.redditinc.com/assets/images/site/reddit-logo.png" height="64" valign="middle" />
-  </a>&nbsp;
+    <img src="https://royalur.net/res/reddit.svg" height="64" valign="middle" />
+  </a>
   <a href="https://royalur.net">
-    <img src="https://royalur.net/favicon.ico" height="64" valign="middle" />
+    <img src="https://royalur.net/favicon.png" height="64" valign="middle" />
   </a>
 </p>
 
