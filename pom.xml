@@ -6,7 +6,7 @@
 
     <groupId>net.sothatsit</groupId>
     <artifactId>royalurserver</artifactId>
-    <version>1.2</version>
+    <version>1.2.1</version>
 
     <packaging>jar</packaging>
 
@@ -14,7 +14,7 @@
         <dependency>
             <groupId>org.java-websocket</groupId>
             <artifactId>Java-WebSocket</artifactId>
-            <version>1.5.1</version>
+            <version>1.5.2</version>
         </dependency>
 
         <dependency>

@@ -92,7 +92,7 @@ public class Game {
     public boolean isInactive() {
         // TODO : Should check the last time they were connected to this game.
         //        They could have changed games and this won't pick that up.
-        return lightClient.isTimedOut() || darkClient.isTimedOut();
+        return lightClient.isTimedOut() && darkClient.isTimedOut();
     }
 
     public boolean isPlayer(Client client) {
