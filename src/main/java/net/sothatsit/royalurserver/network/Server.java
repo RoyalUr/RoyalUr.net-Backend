@@ -110,7 +110,7 @@ public class Server extends WebSocketServer {
         }
 
         if (startException != null)
-            throw new RuntimeException("Exception starting server", startException);
+            throw new RuntimeException("Exception starting server at " + getAddress(), startException);
     }
 
     /**

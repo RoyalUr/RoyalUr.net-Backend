@@ -13,40 +13,49 @@ public class PacketOutGame extends PacketOut {
 
     private final GameID gameID;
     private final Player yourPlayer;
-    private final String yourName;
-    private final String opponentName;
-    private final boolean opponentConnected;
+    private final String lightName;
+    private final String darkName;
+    private final boolean lightConnected;
+    private final boolean darkConnected;
 
     public PacketOutGame(
-            GameID gameID, Player yourPlayer, String yourName,
-            String opponentName, boolean opponentConnected) {
+            GameID gameID,
+            Player yourPlayer,
+            String lightName,
+            String darkName,
+            boolean lightConnected,
+            boolean darkConnected) {
 
         super(Type.GAME);
         Checks.ensureNonNull(gameID, "gameID");
         Checks.ensureNonNull(yourPlayer, "yourPlayer");
-        Checks.ensureNonNull(opponentName, "opponentName");
+        Checks.ensureNonNull(lightName, "lightName");
+        Checks.ensureNonNull(darkName, "darkName");
         this.gameID = gameID;
         this.yourPlayer = yourPlayer;
-        this.yourName = yourName;
-        this.opponentName = opponentName;
-        this.opponentConnected = opponentConnected;
+        this.lightName = lightName;
+        this.darkName = darkName;
+        this.lightConnected = lightConnected;
+        this.darkConnected = darkConnected;
     }
 
     @Override
     protected void writeContents(PacketWriter writer) {
         writer.pushValue(gameID)
                 .pushValue(yourPlayer)
-                .pushVarString(yourName)
-                .pushVarString(opponentName)
-                .pushBool(opponentConnected);
+                .pushVarString(lightName)
+                .pushVarString(darkName)
+                .pushBool(lightConnected)
+                .pushBool(darkConnected);
     }
 
     @Override
     public String toString() {
         return "PacketOutGame(gameID=" + gameID + ", "
                 + "yourPlayer=" + yourPlayer + ", "
-                + "yourName=" + yourName + ", "
-                + "opponentName=\"" + opponentName + "\", "
-                + "opponentConnected=" + opponentConnected + ")";
+                + "lightName=\"" + lightName + "\", "
+                + "darkName=\"" + darkName + "\", "
+                + "lightConnected=" + lightConnected + ", "
+                + "darkConnected=" + darkConnected + ")";
     }
 }

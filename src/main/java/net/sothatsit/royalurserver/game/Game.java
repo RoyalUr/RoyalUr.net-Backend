@@ -10,7 +10,7 @@ import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.Time;
 
 import java.security.SecureRandom;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -25,6 +25,7 @@ public class Game {
 
     public final Client lightClient;
     public final Client darkClient;
+    public final Set<Client> spectators;
 
     private final PlayerState light;
     private final PlayerState dark;
@@ -46,6 +47,7 @@ public class Game {
 
         this.lightClient = lightClient;
         this.darkClient = darkClient;
+        this.spectators = Collections.newSetFromMap(new IdentityHashMap<>());
 
         this.light = new PlayerState(Player.LIGHT, lightClient.getName());
         this.dark = new PlayerState(Player.DARK, darkClient.getName());
@@ -100,9 +102,11 @@ public class Game {
     }
 
     private Player getPlayer(Client client) {
-        if(client == lightClient) return Player.LIGHT;
-        if(client == darkClient) return Player.DARK;
-        throw new IllegalArgumentException(client + " is not a player of this game");
+        if (client == lightClient)
+            return Player.LIGHT;
+        if (client == darkClient)
+            return Player.DARK;
+        return Player.SPECTATOR;
     }
 
     private Client getClient(Player player) {
@@ -120,14 +124,20 @@ public class Game {
     private void broadcast(PacketOut packet) {
         lightClient.trySend(packet);
         darkClient.trySend(packet);
+        for (Client client : spectators) {
+            client.trySend(packet);
+        }
     }
 
     private void sendGamePacket(Client client) {
-        Player player = getPlayer(client);
-        String ownName = getState(player).name;
-        String opponentName = getState(player.getOtherPlayer()).name;
-        boolean opponentConnected = getClient(player.getOtherPlayer()).isConnected();
-        client.send(new PacketOutGame(id, player, ownName, opponentName, opponentConnected));
+        client.send(new PacketOutGame(
+                id,
+                getPlayer(client),
+                light.name,
+                dark.name,
+                lightClient.isConnected(),
+                darkClient.isConnected()
+        ));
     }
 
     private PacketOutState createStatePacket() {
@@ -142,25 +152,31 @@ public class Game {
         Checks.ensureNonNull(client, "client");
         sendGamePacket(client);
         client.send(createStatePacket());
+
+        if (getPlayer(client) == Player.SPECTATOR) {
+            spectators.add(client);
+        }
     }
 
     public void onReconnect(Client client) {
         this.onJoin(client);
 
-        if (client == lightClient && darkClient.isConnected()) {
-            darkClient.send(new PacketOutPlayerStatus(Player.LIGHT, true));
-        } else if (client == darkClient && lightClient.isConnected()) {
-            lightClient.send(new PacketOutPlayerStatus(Player.DARK, true));
+        if (client == lightClient) {
+            broadcast(new PacketOutPlayerStatus(Player.LIGHT, true));
+        } else if (client == darkClient) {
+            broadcast(new PacketOutPlayerStatus(Player.DARK, true));
         }
     }
 
     public void onDisconnect(Client client) {
         Checks.ensureNonNull(client, "client");
 
-        if (client == lightClient && darkClient.isConnected()) {
-            darkClient.send(new PacketOutPlayerStatus(Player.LIGHT, false));
-        } else if (client == darkClient && lightClient.isConnected()) {
-            lightClient.send(new PacketOutPlayerStatus(Player.DARK, false));
+        if (client == lightClient) {
+            broadcast(new PacketOutPlayerStatus(Player.LIGHT, false));
+        } else if (client == darkClient) {
+            broadcast(new PacketOutPlayerStatus(Player.DARK, false));
+        } else {
+            spectators.remove(client);
         }
     }
 

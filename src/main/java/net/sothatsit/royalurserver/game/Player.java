@@ -10,7 +10,8 @@ import net.sothatsit.royalurserver.network.PacketWritable;
  */
 public enum Player implements PacketWritable {
     DARK(1, "dark"),
-    LIGHT(2, "light");
+    LIGHT(2, "light"),
+    SPECTATOR(3, "spectator");
 
     public final int id;
     public final String name;
@@ -27,7 +28,7 @@ public enum Player implements PacketWritable {
 
     @Override
     public String toString() {
-        return name + " player";
+        return "Player." + name();
     }
 
     /** @return The other Player in a game. **/
@@ -35,15 +36,8 @@ public enum Player implements PacketWritable {
         switch (this) {
             case DARK: return LIGHT;
             case LIGHT: return DARK;
+            case SPECTATOR: throw new IllegalStateException(this + " does not have an other player");
             default: throw new IllegalStateException("Unknown player " + this);
         }
-    }
-
-    /** @return An ID representing {@param player} to the client. **/
-    public static int toClientID(Player player) {
-        if(player == null)  return 0;
-        if(player == DARK)  return 1;
-        if(player == LIGHT) return 2;
-        throw new IllegalArgumentException("Unknown player " + player);
     }
 }

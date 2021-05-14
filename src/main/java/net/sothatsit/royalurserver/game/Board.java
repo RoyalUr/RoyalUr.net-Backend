@@ -47,7 +47,7 @@ public class Board implements PacketWritable {
     @Override
     public void writeTo(PacketWriter out) {
         for(Player owner : tileOwners) {
-            out.pushDigit(Player.toClientID(owner));
+            out.pushDigit(owner == null ? 0 : owner.id);
         }
     }
 }
