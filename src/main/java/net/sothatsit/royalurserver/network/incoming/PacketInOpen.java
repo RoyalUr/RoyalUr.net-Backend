@@ -8,6 +8,7 @@ package net.sothatsit.royalurserver.network.incoming;
 public class PacketInOpen extends PacketIn {
 
     public int protocolVersion;
+    public String name;
 
     public PacketInOpen() {
         super(Type.OPEN);
@@ -16,10 +17,13 @@ public class PacketInOpen extends PacketIn {
     @Override
     protected void readContents(PacketReader reader) {
         this.protocolVersion = reader.nextInt(4);
+        this.name = reader.nextVarString(2);
     }
 
     @Override
     public String toString() {
-        return "PacketInOpen()";
+        return "PacketInReOpen("
+                + "protocolVersion=" + protocolVersion
+                + ", name=\"" + name + "\"" + ")";
     }
 }

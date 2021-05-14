@@ -7,19 +7,12 @@ package net.sothatsit.royalurserver.network.incoming;
  */
 public class PacketInFindGame extends PacketIn {
 
-    public String name;
-
     public PacketInFindGame() {
         super(Type.FIND_GAME);
     }
 
     @Override
-    protected void readContents(PacketReader reader) {
-        this.name = reader.nextVarString();
-    }
-
-    @Override
     public String toString() {
-        return "PacketInFindGame(name=\"" + name + "\")";
+        return "PacketInFindGame()";
     }
 }

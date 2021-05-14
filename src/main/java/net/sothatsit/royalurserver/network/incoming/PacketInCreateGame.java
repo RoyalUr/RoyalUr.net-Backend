@@ -7,15 +7,8 @@ package net.sothatsit.royalurserver.network.incoming;
  */
 public class PacketInCreateGame extends PacketIn {
 
-    public String name;
-
     public PacketInCreateGame() {
         super(Type.CREATE_GAME);
-    }
-
-    @Override
-    protected void readContents(PacketReader reader) {
-        this.name = reader.nextVarString();
     }
 
     @Override

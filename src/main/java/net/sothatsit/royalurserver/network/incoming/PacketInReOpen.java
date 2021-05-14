@@ -11,6 +11,7 @@ public class PacketInReOpen extends PacketIn {
 
     public int protocolVersion;
     public UUID previousID;
+    public String name;
 
     public PacketInReOpen() {
         super(Type.REOPEN);
@@ -20,10 +21,14 @@ public class PacketInReOpen extends PacketIn {
     public void readContents(PacketReader reader) {
         this.protocolVersion = reader.nextInt(4);
         this.previousID = reader.nextUUID();
+        this.name = reader.nextVarString(2);
     }
 
     @Override
     public String toString() {
-        return "PacketInReOpen(previousID=" + previousID + ")";
+        return "PacketInReOpen("
+                + "protocolVersion=" + protocolVersion
+                + ", previousID=" + previousID
+                + ", name=\"" + name + "\"" + ")";
     }
 }

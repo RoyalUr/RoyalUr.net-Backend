@@ -68,11 +68,6 @@ public class PacketReader {
         return Checks.detailThrown(() -> Integer.parseInt(string), "expected integer but found " + string);
     }
 
-    /** @return The next String with length encoded in the next two digits. **/
-    public String nextVarString() {
-        return nextVarString(2);
-    }
-
     /** @return The next String with length encoded in the next {@param lengthDigits} digits. **/
     public String nextVarString(int lengthDigits) {
         int length = nextInt(lengthDigits);

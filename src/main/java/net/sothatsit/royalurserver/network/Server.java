@@ -229,6 +229,7 @@ public class Server extends WebSocketServer {
         if (socket.isClosed() || socket.isClosing())
             return;
 
+        Client client = clients.get(socket);
         PacketIn packet;
         try {
             PacketReader reader = new PacketReader(message);
@@ -236,12 +237,21 @@ public class Server extends WebSocketServer {
             packet.read(reader);
         } catch(Exception exception) {
             String exceptionName = exception.getClass().getSimpleName();
-            logger.log(Level.WARNING, exceptionName + " reading packet \"" + message + "\": " + exception.getMessage());
-            new Client(UUID.randomUUID(), socket).error("invalid packet");
+            logger.log(
+                    Level.WARNING,
+                    exceptionName + " reading packet \"" + message + "\": " + exception.getMessage()
+            );
+            Client errorClient;
+            if (client == null) {
+                errorClient = new Client("unknown", UUID.randomUUID(), socket);
+            } else {
+                errorClient = client;
+            }
+            errorClient.error("invalid packet");
             return;
         }
 
-        Client client = clients.get(socket);
+        // Check if we need to initialise this client.
         if(client == null) {
             connectClient(socket, packet);
             return;
@@ -252,7 +262,7 @@ public class Server extends WebSocketServer {
         } catch(Exception exception) {
             String exceptionName = exception.getClass().getSimpleName();
             logger.log(Level.SEVERE, exceptionName + " handling packet " + packet + " for " + client, exception);
-            new Client(UUID.randomUUID(), socket).error("internal error");
+            client.error("internal error");
             return;
         }
     }
@@ -261,34 +271,40 @@ public class Server extends WebSocketServer {
         Checks.ensureNonNull(socket, "socket");
         Checks.ensureNonNull(packet, "packet");
 
-        Client client = null;
+        Client client;
         int protocolVersion;
         boolean isReconnect = false;
 
         switch(packet.type) {
+            // When a client first connects.
             case OPEN:
                 PacketInOpen open = (PacketInOpen) packet;
+                client = new Client(open.name, UUID.randomUUID(), socket);
                 protocolVersion = open.protocolVersion;
                 break;
+
+            // When a client attempts to re-connect.
             case REOPEN:
                 PacketInReOpen reopen = (PacketInReOpen) packet;
-                client = disconnected.get(reopen.previousID);
+                client = disconnected.remove(reopen.previousID);
                 protocolVersion = reopen.protocolVersion;
 
-                if(client != null && !client.isTimedOut()) {
-                    disconnected.remove(reopen.previousID);
-                    isReconnect = true;
+                // Treat this as a normal OPEN packet instead.
+                if (client == null || client.isTimedOut()) {
+                    client = new Client(reopen.name, UUID.randomUUID(), socket);
                 } else {
-                    client = null;
+                    isReconnect = true;
+                    client.setName(reopen.name);
                 }
                 break;
+
+            // Uh oh.
             default:
-                new Client(UUID.randomUUID(), socket).error("Expected open or reopen packet");
+                new Client("unknown", UUID.randomUUID(), socket)
+                        .error("Expected open or reopen packet");
                 return;
         }
-        if(client == null) {
-            client = new Client(UUID.randomUUID(), socket);
-        }
+
         if (protocolVersion != Client.PROTOCOL_VERSION) {
             client.error("RoyalUr protocol version mismatch, " + protocolVersion + " != " + Client.PROTOCOL_VERSION);
             return;
@@ -319,7 +335,6 @@ public class Server extends WebSocketServer {
         }
 
         Client client = clients.get(socket);
-
         if(socket == null || client == null) {
             game.onError(exception);
         } else {

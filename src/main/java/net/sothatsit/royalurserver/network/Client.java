@@ -20,24 +20,25 @@ public class Client {
      * the server and the client should result in an
      * increase to the current protocol version.
      */
-    public static final int PROTOCOL_VERSION = 3;
+    public static final int PROTOCOL_VERSION = 4;
 
-    public static final long DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
     public static final int MAX_NAME_LENGTH = 12;
+    public static final long DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
 
+    private String name;
     public final UUID id;
 
     private WebSocket socket;
     private boolean connected;
-    private String name = "unknown";
 
     private Time connectTime;
     private Time disconnectTime;
 
-    public Client(UUID id, WebSocket socket) {
+    public Client(String name, UUID id, WebSocket socket) {
         Checks.ensureNonNull(id, "id");
         Checks.ensureNonNull(socket, "socket");
 
+        setName(name);
         this.id = id;
         this.connectTime = Time.now();
         this.socket = socket;
@@ -45,6 +46,16 @@ public class Client {
             this.socket = null;
             this.disconnectTime = Time.now();
         }
+    }
+
+    /** @return the name of this player. **/
+    public String getName() {
+        return name;
+    }
+
+    /** Sets the name of this player to {@param name}. **/
+    public void setName(String name) {
+        this.name = name.substring(0, Math.min(name.length(), MAX_NAME_LENGTH));
     }
 
     /** @return Whether this client is currently connected. **/
@@ -83,16 +94,6 @@ public class Client {
         this.connected = false;
         this.connectTime = null;
         this.disconnectTime = Time.now();
-    }
-
-    /** Set the name of this client to {@param name}. **/
-    public void setName(String name) {
-        this.name = name.substring(0, Math.min(name.length(), MAX_NAME_LENGTH));
-    }
-
-    /** @return the name of this client. **/
-    public String getName() {
-        return name;
     }
 
     /** Send the error {@param error} to the client, and close their connection. **/

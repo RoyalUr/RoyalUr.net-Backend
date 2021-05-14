@@ -68,8 +68,6 @@ public class MatchMaker {
 
     /** Creates a pending match for an opponent to join by link. **/
     public void createPendingMatch(Client client, PacketInCreateGame packet) {
-        client.setName(packet.name);
-
         GameID gameID = gameManager.nextGameID();
         synchronized (lock) {
             pendingGames.put(gameID, client);
@@ -82,8 +80,6 @@ public class MatchMaker {
 
     /** Attempts to find a match for {@param client} to play. **/
     public void findMatchFor(Client client, PacketInFindGame packet) {
-        client.setName(packet.name);
-
         synchronized (lock) {
             if(waitingClient == null) {
                 waitingClient = client;
