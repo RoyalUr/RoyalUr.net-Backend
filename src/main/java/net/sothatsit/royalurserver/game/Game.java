@@ -53,12 +53,6 @@ public class Game {
 
         this.light = new PlayerState(Player.LIGHT, lightClient.getName());
         this.dark = new PlayerState(Player.DARK, darkClient.getName());
-        for (int i=0; i < 6; ++i) {
-            light.useTile();
-            light.addScore();
-            dark.useTile();
-            dark.addScore();
-        }
         this.board = new Board();
 
         this.state = GameState.ROLL;
