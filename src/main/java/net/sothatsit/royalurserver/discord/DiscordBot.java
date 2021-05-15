@@ -113,14 +113,14 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
                 channel.sendMessage(reply).queue();
                 return;
             } else {
-                channel.sendMessage("Usage: !new-game ([player-one player-two], ...)").queue();
+                channel.sendMessage("**Usage:** !new-games ([player-one player-two], ...)").queue();
                 return;
             }
         }
 
         if (command[0].equalsIgnoreCase("pm-game") || command[0].equalsIgnoreCase("pm-games")) {
             if (command.length == 1 || (command.length - 1) % 2 != 0) {
-                channel.sendMessage("Usage: !new-game ([@PlayerOne @PlayerTwo], ...)").queue();
+                channel.sendMessage("**Usage:** !pm-games ([@PlayerOne @PlayerTwo], ...)").queue();
                 return;
             }
 
@@ -155,25 +155,9 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
                 }
 
                 for (int game = 0; game < games; ++game) {
-                    GameID gameID = matchMaker.generateGame();
                     User user1 = users.get(2 * game);
                     User user2 = users.get(2 * game + 1);
-
-                    String name1 = Client.sanitiseName(user1.getName());
-                    String name2 = Client.sanitiseName(user2.getName());
-
-                    String message1 = "Here is your game link to play against "
-                            + "**" + name2 + "**!\n\n" + generateGameURL(gameID, name1);
-                    String message2 = "Here is your game link to play against "
-                            + "**" + name1 + "**!\n\n" + generateGameURL(gameID, name2);
-
-                    // Send private messages to users.
-                    user1.openPrivateChannel().queue(pm -> {
-                        pm.sendMessage(message1).queue();
-                    });
-                    user2.openPrivateChannel().queue(pm -> {
-                        pm.sendMessage(message2).queue();
-                    });
+                    createAndPMGame(user1, user2);
                 }
 
                 channel.sendMessage("Sent private messages with game links!").queue();
@@ -198,6 +182,44 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
             channel.sendMessage(response).queue();
             return;
         }
+
+        if (command[0].equalsIgnoreCase("challenge")) {
+            if (command.length != 2) {
+                channel.sendMessage("**Usage:** !challenge @OtherPlayer").queue();
+                return;
+            }
+
+            RestAction<User> otherUserAction = parseMention(command[1]);
+            if (otherUserAction == null) {
+                channel.sendMessage("Please @mention the user you wish to challenge.").queue();
+                return;
+            }
+
+            otherUserAction.queue(otherUser -> {
+                User user = event.getAuthor();
+                createAndPMGame(user, otherUser);
+                channel.sendMessage("Sent private messages with game links!").queue();
+            });
+        }
+    }
+
+    private void createAndPMGame(User user1, User user2) {
+        GameID gameID = matchMaker.generateGame();
+        String name1 = Client.sanitiseName(user1.getName());
+        String name2 = Client.sanitiseName(user2.getName());
+
+        String message1 = "Here is your game link to play against "
+                + "**" + name2 + "**!\n\n" + generateGameURL(gameID, name1);
+        String message2 = "Here is your game link to play against "
+                + "**" + name1 + "**!\n\n" + generateGameURL(gameID, name2);
+
+        // Send private messages to users.
+        user1.openPrivateChannel().queue(pm -> {
+            pm.sendMessage(message1).queue();
+        });
+        user2.openPrivateChannel().queue(pm -> {
+            pm.sendMessage(message2).queue();
+        });
     }
 
     private boolean isUnknownName(String name) {
