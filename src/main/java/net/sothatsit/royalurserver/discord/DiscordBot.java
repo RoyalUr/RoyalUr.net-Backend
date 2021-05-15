@@ -183,6 +183,11 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
 
         if (command[0].equalsIgnoreCase("active-games")) {
             List<Game> games = gameManager.getActiveGames();
+            if (games.isEmpty()) {
+                channel.sendMessage("There are no active games.").queue();
+                return;
+            }
+
             StringBuilder response = new StringBuilder();
             for (Game game : games) {
                 response.append("**").append(game.light.name).append("**");
@@ -217,6 +222,5 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
         message += " as " + winner.player.name;
         message += " with a score of " + winner.getScore() + " to " + loser.getScore() + "!";
         channel.sendMessage(message).queue();
-
     }
 }
