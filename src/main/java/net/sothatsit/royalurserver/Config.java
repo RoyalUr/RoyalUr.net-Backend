@@ -16,6 +16,11 @@ import java.util.logging.Logger;
  */
 public class Config {
 
+    private static final String DEBUG_MODE = "debug-mode";
+
+    private static final String RUN_DISCORD_BOT_KEY = "run-discord-bot";
+    private static final String DISCORD_BOT_TOKEN = "discord-bot-token";
+
     private static final String USE_SSL_KEY = "use-ssl";
     private static final String SSL_CERT_FILE_KEY = "ssl-cert-file";
     private static final String SSL_PRIVATE_KEY_FILE_KEY = "ssl-private-key-file";
@@ -31,6 +36,18 @@ public class Config {
 
     public Config(String contents) {
         this.contents = new JSONObject(contents);
+    }
+
+    public boolean isDebugMode() {
+        return contents.has(DEBUG_MODE) && contents.getBoolean(DEBUG_MODE);
+    }
+
+    public boolean runDiscordBot() {
+        return contents.has(RUN_DISCORD_BOT_KEY) && contents.getBoolean(RUN_DISCORD_BOT_KEY);
+    }
+
+    public String getDiscordToken() {
+        return contents.has(DISCORD_BOT_TOKEN) ? contents.getString(DISCORD_BOT_TOKEN) : "";
     }
 
     public boolean useSSL() {
@@ -51,6 +68,8 @@ public class Config {
 
     public JSONObject write() {
         JSONObject output = new JSONObject();
+        output.put(RUN_DISCORD_BOT_KEY, runDiscordBot());
+        output.put(DISCORD_BOT_TOKEN, getDiscordToken());
         output.put(USE_SSL_KEY, useSSL());
         output.put(SSL_CERT_FILE_KEY, getSSLCertFile());
         output.put(SSL_PRIVATE_KEY_FILE_KEY, getSSLPrivateKeyFile());
@@ -89,12 +108,14 @@ public class Config {
     public static Config read(File file) throws IOException {
         if (file.exists())  {
             try {
+                logger.log(Level.INFO, "Reading config from " + file);
                 return new Config(readFileToString(file));
             } catch (JSONException e) {
                 throw new RuntimeException("Malformed config file " + file, e);
             }
         }
 
+        logger.log(Level.INFO, "Creating default config at " + file);
         Config defaultConfig = new Config();
         defaultConfig.write(file);
         return defaultConfig;

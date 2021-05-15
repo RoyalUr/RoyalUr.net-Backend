@@ -8,9 +8,7 @@ import net.sothatsit.royalurserver.network.outgoing.PacketOutGamePending;
 import net.sothatsit.royalurserver.network.outgoing.PacketOutInvalidGame;
 
 import java.security.SecureRandom;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Creates games between players that are searching for a game.
@@ -26,6 +24,7 @@ public class MatchMaker {
     private final Object lock = new Object();
     private Client waitingClient = null;
     private final Map<GameID, Client> pendingGames = new HashMap<>();
+    private final Set<GameID> generatedGames = new HashSet<>();
 
     public MatchMaker(GameManager gameManager) {
         this.gameManager = gameManager;
@@ -34,6 +33,24 @@ public class MatchMaker {
     /** @return whether {@param client} is currently waiting for a match. **/
     public boolean isFindingMatchFor(Client client) {
         return waitingClient == client;
+    }
+
+    /** @return whether {@param gameID} corresponds to a generated game which has had no one connect. **/
+    public boolean isGameGenerated(GameID gameID) {
+        synchronized (lock) {
+            return generatedGames.contains(gameID);
+        }
+    }
+
+    /** Converts a generated game into a pending game with the given client. **/
+    public void joinGeneratedGame(GameID gameID, Client client) {
+        synchronized (lock) {
+            if (!generatedGames.remove(gameID)) {
+                client.send(new PacketOutInvalidGame(gameID));
+                return;
+            }
+            createPendingMatch(gameID, client);
+        }
     }
 
     /** @return whether {@param gameID} corresponds to a currently pending game. **/
@@ -69,6 +86,11 @@ public class MatchMaker {
     /** Creates a pending match for an opponent to join by link. **/
     public void createPendingMatch(Client client, PacketInCreateGame packet) {
         GameID gameID = gameManager.nextGameID();
+        createPendingMatch(gameID, client);
+    }
+
+    /** Creates a pending match for an opponent to join by link. **/
+    public void createPendingMatch(GameID gameID, Client client) {
         synchronized (lock) {
             pendingGames.put(gameID, client);
             if (waitingClient == client) {
@@ -76,6 +98,15 @@ public class MatchMaker {
             }
         }
         client.send(new PacketOutGamePending(gameID));
+    }
+
+    /** Generates a new game for two players to connect to from a link. **/
+    public GameID generateGame() {
+        GameID gameID = gameManager.nextGameID();
+        synchronized (lock) {
+            generatedGames.add(gameID);
+        }
+        return gameID;
     }
 
     /** Attempts to find a match for {@param client} to play. **/

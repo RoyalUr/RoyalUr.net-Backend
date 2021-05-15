@@ -1,5 +1,6 @@
 package net.sothatsit.royalurserver;
 
+import net.sothatsit.royalurserver.discord.DiscordBot;
 import net.sothatsit.royalurserver.game.Game;
 import net.sothatsit.royalurserver.management.GameManager;
 import net.sothatsit.royalurserver.management.MatchMaker;
@@ -13,6 +14,7 @@ import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.LetsEncryptSSL;
 
 import javax.net.ssl.SSLContext;
+import javax.security.auth.login.LoginException;
 import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,13 +26,14 @@ import java.util.logging.Logger;
  */
 public class RoyalUr {
 
-    public static final String VERSION = "1.3.0";
+    public static final String VERSION = "1.4.0";
     public static final Logger logger = Logging.getLogger("main");
 
     private final Config config;
     private final Server server;
     private final GameManager gameManager;
     private final MatchMaker matchmaker;
+    private final DiscordBot bot;
 
     public RoyalUr(int serverPort) {
         this.config = Config.read();
@@ -50,6 +53,23 @@ public class RoyalUr {
 
         this.server.start();
         this.gameManager.start();
+        this.bot = maybeStartDiscordBot();
+        if (bot != null) {
+            gameManager.addGameListener(bot);
+        }
+    }
+
+    /** Starts the Discord bot if it is enabled. **/
+    private DiscordBot maybeStartDiscordBot() {
+        if (!config.runDiscordBot())
+            return null;
+
+        try {
+            return new DiscordBot(config.getDiscordToken(), matchmaker, gameManager);
+        } catch (LoginException e) {
+            new RuntimeException("Error starting Discord bot", e).printStackTrace();
+            return null;
+        }
     }
 
     /** Shutdown the RoyalUr application. **/
@@ -57,7 +77,13 @@ public class RoyalUr {
         try {
             gameManager.stopAll("Server is restarting");
         } finally {
-            server.shutdown();
+            try {
+                if (bot != null) {
+                    bot.shutdown();
+                }
+            } finally {
+                server.shutdown();
+            }
         }
     }
 
@@ -65,6 +91,8 @@ public class RoyalUr {
     public void onConsoleInput(String input) {
         Checks.ensureNonNull(input, "input");
 
+        // Remove all non-ascii characters.
+        input = input.replaceAll("[^\\x00-\\x7F]", "");
         logger.info("Input: " + input);
     }
 
@@ -80,7 +108,6 @@ public class RoyalUr {
         Checks.ensureNonNull(client, "client");
 
         logger.info(client + " close");
-
         gameManager.onClientDisconnect(client);
         matchmaker.onClientDisconnect(client);
     }
@@ -90,7 +117,6 @@ public class RoyalUr {
         Checks.ensureNonNull(client, "client");
 
         logger.info(client + " timed out");
-
         gameManager.onClientTimeout(client);
     }
 
@@ -98,7 +124,6 @@ public class RoyalUr {
     public void onMessage(Client client, PacketIn packet) {
         Checks.ensureNonNull(client, "client");
         Checks.ensureNonNull(packet, "packet");
-        logger.info(client + " -> " + packet);
 
         Game game = gameManager.findActiveGame(client);
         if (game != null) {
@@ -114,7 +139,9 @@ public class RoyalUr {
         switch (packet.type) {
             case JOIN_GAME:
                 PacketInJoinGame joinGamePacket = (PacketInJoinGame) packet;
-                if (matchmaker.isGamePending(joinGamePacket.gameID)) {
+                if (matchmaker.isGameGenerated(joinGamePacket.gameID)) {
+                    matchmaker.joinGeneratedGame(joinGamePacket.gameID, client);
+                } else if (matchmaker.isGamePending(joinGamePacket.gameID)) {
                     matchmaker.startPendingGame(joinGamePacket.gameID, client);
                 } else {
                     gameManager.onJoinGame(client, joinGamePacket.gameID, true);

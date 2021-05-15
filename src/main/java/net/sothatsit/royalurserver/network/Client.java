@@ -55,7 +55,7 @@ public class Client {
 
     /** Sets the name of this player to {@param name}. **/
     public void setName(String name) {
-        this.name = name.substring(0, Math.min(name.length(), MAX_NAME_LENGTH));
+        this.name = sanitiseName(name);
     }
 
     /** @return Whether this client is currently connected. **/
@@ -130,4 +130,8 @@ public class Client {
         return "Client(id=" + id.toString().substring(0, 8) + ", name=\"" + name + "\")";
     }
 
+    /** Sanitises the given name to limit it to the max name length. **/
+    public static String sanitiseName(String name) {
+        return name.replaceAll("[^\\x00-\\x7F]", "").substring(0, Math.min(name.length(), MAX_NAME_LENGTH));
+    }
 }

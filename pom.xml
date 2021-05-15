@@ -6,11 +6,17 @@
 
     <groupId>net.sothatsit</groupId>
     <artifactId>royalurserver</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 
     <packaging>jar</packaging>
 
     <dependencies>
+        <dependency>
+            <groupId>net.dv8tion</groupId>
+            <artifactId>JDA</artifactId>
+            <version>LATEST</version>
+        </dependency>
+
         <dependency>
             <groupId>org.java-websocket</groupId>
             <artifactId>Java-WebSocket</artifactId>
@@ -52,6 +58,12 @@
         <repository>
             <id>maven-central</id>
             <url>http://repo1.maven.org/maven2</url>
+        </repository>
+
+        <repository>
+            <id>dv8tion</id>
+            <name>m2-dv8tion</name>
+            <url>https://m2.dv8tion.net/releases</url>
         </repository>
     </repositories>
 

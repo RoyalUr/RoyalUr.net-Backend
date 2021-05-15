@@ -27,14 +27,16 @@ public class Game {
     public final Client darkClient;
     public final Set<Client> spectators;
 
-    private final PlayerState light;
-    private final PlayerState dark;
-    private final Board board;
+    public final PlayerState light;
+    public final PlayerState dark;
+    public final Board board;
 
     private GameState state;
     private Player currentPlayer;
     private DiceRoll roll;
     private List<Move> potentialMoves;
+
+    private final List<GameListener> listeners = new ArrayList<>();
 
     public Game(GameID id, Client lightClient, Client darkClient) {
         Checks.ensureNonNull(lightClient, "lightClient");
@@ -51,6 +53,12 @@ public class Game {
 
         this.light = new PlayerState(Player.LIGHT, lightClient.getName());
         this.dark = new PlayerState(Player.DARK, darkClient.getName());
+        for (int i=0; i < 6; ++i) {
+            light.useTile();
+            light.addScore();
+            dark.useTile();
+            dark.addScore();
+        }
         this.board = new Board();
 
         this.state = GameState.ROLL;
@@ -79,6 +87,18 @@ public class Game {
         logger.info("stopping game due to: " + reason);
     }
 
+    public void addGameListener(GameListener listener) {
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
+    }
+
+    public void removeGameListener(GameListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
+    }
+
     public GameState getState() {
         return state;
     }
@@ -89,6 +109,18 @@ public class Game {
 
     public boolean isWon() {
         return state == GameState.DONE && (light.isMaxScore() || dark.isMaxScore());
+    }
+
+    public PlayerState getWinner() {
+        if (!isWon())
+            throw new IllegalStateException("Game is not won");
+        return getState(currentPlayer);
+    }
+
+    public PlayerState getLoser() {
+        if (!isWon())
+            throw new IllegalStateException("Game is not won");
+        return getState(currentPlayer.getOtherPlayer());
     }
 
     public boolean isInactive() {
@@ -284,6 +316,7 @@ public class Game {
             this.state = GameState.DONE;
             this.currentPlayer = state.player;
             this.logger.info("Winner winner chicken dinner " + currentPlayer);
+            reportGameWin();
         } else {
             this.state = GameState.ROLL;
             this.roll = null;
@@ -291,6 +324,16 @@ public class Game {
 
         broadcast(new PacketOutMove(move));
         broadcast(createStatePacket());
+    }
+
+    private void reportGameWin() {
+        for (GameListener listener : listeners) {
+            try {
+                listener.onGameWin(this);
+            } catch (Exception e) {
+                new RuntimeException("Error in GameListener " + listener, e).printStackTrace();
+            }
+        }
     }
 
     private void handlePacket(Client client, PacketIn packet) {
@@ -321,7 +364,6 @@ public class Game {
     }
 
     public void onMessage(Client client, PacketIn packet) {
-        logger.info(getPlayer(client) + " -> " + packet);
         scheduler.schedule("onMessage from " + client, () -> this.handlePacket(client, packet));
     }
 }

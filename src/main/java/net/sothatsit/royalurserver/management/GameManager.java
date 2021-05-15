@@ -2,6 +2,7 @@ package net.sothatsit.royalurserver.management;
 
 import net.sothatsit.royalurserver.game.Game;
 import net.sothatsit.royalurserver.game.GameID;
+import net.sothatsit.royalurserver.game.GameListener;
 import net.sothatsit.royalurserver.game.GameState;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.network.outgoing.PacketOutInvalidGame;
@@ -28,6 +29,8 @@ public class GameManager {
     private final Map<GameID, Game> games = new ConcurrentHashMap<>();
     private final Map<Client, Game> clientActiveGames = new ConcurrentHashMap<>();
 
+    private final List<GameListener> gameListeners = new ArrayList<>();
+
     public GameManager() {
         scheduler.scheduleRepeating("game-purger", this::purgeInactiveGames, 5, TimeUnit.SECONDS);
     }
@@ -38,6 +41,37 @@ public class GameManager {
 
     public void stop() {
         scheduler.stop();
+    }
+
+    public void addGameListener(GameListener listener) {
+        synchronized (lock) {
+            for (Game game : games.values()) {
+                game.addGameListener(listener);
+            }
+            gameListeners.add(listener);
+        }
+    }
+
+    public void removeGameListener(GameListener listener) {
+        synchronized (lock) {
+            gameListeners.remove(listener);
+            for (Game game : games.values()) {
+                game.removeGameListener(listener);
+            }
+        }
+    }
+
+    /** Note: The returned games are not thread-safe. Users beware! **/
+    public List<Game> getActiveGames() {
+        List<Game> games = new ArrayList<>();
+        synchronized (lock) {
+            for (Game game : clientActiveGames.values()) {
+                if (!games.contains(game)) {
+                    games.add(game);
+                }
+            }
+        }
+        return games;
     }
 
     public void purgeInactiveGames() {
@@ -81,6 +115,10 @@ public class GameManager {
             }
             game = new Game(id, light, dark);
             games.put(id, game);
+
+            for (GameListener listener : gameListeners) {
+                game.addGameListener(listener);
+            }
         }
 
         onJoinGame(light, id, false);
