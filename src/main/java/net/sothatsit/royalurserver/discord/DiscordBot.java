@@ -213,7 +213,7 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
         String winnerName = (isUnknownName(winner.name) ? "An unknown player" : winner.name);
         String loserName = (isUnknownName(loser.name) ? "an unknown player" : loser.name);
 
-        String message = winnerName + " just defeated " + loserName;
+        String message = "**" + winnerName + "** just defeated **" + loserName + "**";
         message += " as " + winner.player.name;
         message += " with a score of " + winner.getScore() + " to " + loser.getScore() + "!";
         channel.sendMessage(message).queue();

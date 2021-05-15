@@ -96,33 +96,47 @@ public class Client {
         this.disconnectTime = Time.now();
     }
 
+    private boolean isSocketOpen() {
+        return connected && socket != null && !socket.isClosing() && !socket.isClosed();
+    }
+
     /** Send the error {@param error} to the client, and close their connection. **/
     public void error(String error) {
         Checks.ensureNonNull(error, "error");
-        if (socket == null || socket.isClosing() || socket.isClosed())
+        if (!isSocketOpen())
             return;
 
-        send(new PacketOutError(error));
-        socket.close();
-        socket = null;
-    }
+        trySend(new PacketOutError(error));
 
-    /** Send the packet {@param packet} to the client. **/
-    public void send(PacketOut packet) {
-        Checks.ensureNonNull(packet, "packet");
-        Checks.ensureState(
-                isConnected() && socket != null && !socket.isClosed() && !socket.isClosing(),
-                "cannot send packet to disconnected client"
-        );
-        socket.send(packet.write());
+        try {
+            if (isSocketOpen()) {
+                socket.close();
+            }
+        } catch (Exception e) {
+            new RuntimeException("Error closing socket", e).printStackTrace();
+        } finally {
+            socket = null;
+        }
     }
 
     /** Try to send the packet {@param packet} to the client, with no error if the packet could not be sent. **/
     public void trySend(PacketOut packet) {
         Checks.ensureNonNull(packet, "packet");
-        if (!isConnected() || socket == null || socket.isClosed() || socket.isClosing())
+        if (!isSocketOpen())
             return;
-        send(packet);
+
+        try {
+            send(packet);
+        } catch (Exception e) {
+            new RuntimeException("Error sending packet", e).printStackTrace();
+        }
+    }
+
+    /** Send the packet {@param packet} to the client. **/
+    public void send(PacketOut packet) {
+        Checks.ensureNonNull(packet, "packet");
+        Checks.ensureState(isSocketOpen(), "cannot send packet to disconnected client");
+        socket.send(packet.write());
     }
 
     @Override
