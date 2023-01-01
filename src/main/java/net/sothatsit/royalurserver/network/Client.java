@@ -1,10 +1,10 @@
 package net.sothatsit.royalurserver.network;
 
+import io.socket.socketio.server.SocketIoSocket;
 import net.sothatsit.royalurserver.network.outgoing.PacketOut;
 import net.sothatsit.royalurserver.network.outgoing.PacketOutError;
 import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.Time;
-import org.java_websocket.WebSocket;
 
 import java.util.UUID;
 
@@ -28,13 +28,13 @@ public class Client {
     private String name;
     public final UUID id;
 
-    private WebSocket socket;
+    private SocketIoSocket socket;
     private boolean connected;
 
     private Time connectTime;
     private Time disconnectTime;
 
-    public Client(String name, UUID id, WebSocket socket) {
+    public Client(String name, UUID id, SocketIoSocket socket) {
         Checks.ensureNonNull(id, "id");
         Checks.ensureNonNull(socket, "socket");
 
@@ -42,7 +42,7 @@ public class Client {
         this.id = id;
         this.connectTime = Time.now();
         this.socket = socket;
-        if (socket == null || socket.isClosed() || socket.isClosing()) {
+        if (socket == null) {
             this.socket = null;
             this.disconnectTime = Time.now();
         }
@@ -79,7 +79,7 @@ public class Client {
     }
 
     /** Update this client to indicate that they've just connected through the socket {@param socket}. **/
-    protected void onConnect(WebSocket socket) {
+    protected void onConnect(SocketIoSocket socket) {
         Checks.ensureNonNull(socket, "socket");
 
         this.socket = socket;
@@ -97,7 +97,7 @@ public class Client {
     }
 
     private boolean isSocketOpen() {
-        return connected && socket != null && !socket.isClosing() && !socket.isClosed();
+        return connected && socket != null;
     }
 
     /** Send the error {@param error} to the client, and close their connection. **/
@@ -110,7 +110,7 @@ public class Client {
 
         try {
             if (isSocketOpen()) {
-                socket.close();
+                socket.disconnect(true);
             }
         } catch (Exception e) {
             new RuntimeException("Error closing socket", e).printStackTrace();

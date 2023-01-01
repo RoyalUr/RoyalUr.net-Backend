@@ -1,7 +1,8 @@
 package net.sothatsit.royalurserver;
 
+import org.slf4j.simple.SimpleLogger;
+
 import java.util.Scanner;
-import java.util.logging.Logger;
 
 /**
  * The entry point to this application.
@@ -14,7 +15,7 @@ public class Main {
 
     public static void main(String[] args) {
         // Set SLF4J-Simple to have the INFO log level.
-        System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO");
+        System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO");
 
         RoyalUr.logger.info("Starting RoyalUr.net server v" + RoyalUr.VERSION);
         RoyalUr game = new RoyalUr(DEFAULT_PORT);

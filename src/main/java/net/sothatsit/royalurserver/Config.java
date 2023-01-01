@@ -89,7 +89,7 @@ public class Config {
 
     public static Config read() {
         String configLocation = System.getenv("ROYAL_UR_SERVER_CONFIG");
-        if (configLocation == null || configLocation.trim().isEmpty()) {
+        if (configLocation == null || configLocation.isBlank()) {
             logger.log(
                     Level.WARNING,
                     "No config file set via the ROYAL_UR_SERVER_CONFIG env variable. Using the default config."

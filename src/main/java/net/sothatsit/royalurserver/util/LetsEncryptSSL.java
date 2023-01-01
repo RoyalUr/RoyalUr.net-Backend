@@ -1,5 +1,10 @@
 package net.sothatsit.royalurserver.util;
 
+import jakarta.xml.bind.DatatypeConverter;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -14,10 +19,6 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.xml.bind.DatatypeConverter;
 
 /**
  * Utility methods for setting up SSL encryption using Let's Encrypt.
@@ -26,8 +27,8 @@ import javax.xml.bind.DatatypeConverter;
 public class LetsEncryptSSL {
 
     /**
-     * @param certFile The certificate file to use, cert.pem
-     * @param privKeyFile The private key file to use, privkey.pem
+     * @param certFile The certificate file to use, cert.pem.
+     * @param privKeyFile The private key file to use, privkey.pem.
      * @return an SSLContext to use to support SSL-encrypted WebSocket connections.
      */
     public static SSLContext generateSSLContext(File certFile, File privKeyFile, String password) {

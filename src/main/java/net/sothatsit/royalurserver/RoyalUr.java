@@ -5,59 +5,61 @@ import net.sothatsit.royalurserver.game.Game;
 import net.sothatsit.royalurserver.management.GameManager;
 import net.sothatsit.royalurserver.management.MatchMaker;
 import net.sothatsit.royalurserver.network.Client;
-import net.sothatsit.royalurserver.network.Server;
+import net.sothatsit.royalurserver.network.RoyalUrServer;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInCreateGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInJoinGame;
 import net.sothatsit.royalurserver.util.Checks;
-import net.sothatsit.royalurserver.util.LetsEncryptSSL;
 
-import javax.net.ssl.SSLContext;
 import javax.security.auth.login.LoginException;
-import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Manages the RoyalUr application.
+ * Manages the RoyalUr.net backend server.
  *
  * @author Paddy Lamont
  */
 public class RoyalUr {
 
-    public static final String VERSION = "1.4.0";
+    public static final String VERSION = "2.0.0-SNAPSHOT";
     public static final Logger logger = Logging.getLogger("main");
 
     private final Config config;
-    private final Server server;
+    private final RoyalUrServer royalUrServer;
     private final GameManager gameManager;
     private final MatchMaker matchmaker;
     private final DiscordBot bot;
 
     public RoyalUr(int serverPort) {
         this.config = Config.read();
-        this.server = new Server(serverPort, this);
+        this.royalUrServer = new RoyalUrServer(serverPort, this);
         this.gameManager = new GameManager();
         this.matchmaker = new MatchMaker(gameManager);
 
         // If SSL is configured, set it up.
-        if (config.useSSL()) {
-            File certFile = new File(config.getSSLCertFile());
-            File privKeyFile = new File(config.getSSLPrivateKeyFile());
-            String password = config.getSSLPassword();
-            SSLContext context = LetsEncryptSSL.generateSSLContext(certFile, privKeyFile, password);
-            server.setupSSL(context);
-            logger.info("SSL encryption successfully configured.");
-        }
+//        if (config.useSSL()) {
+//            reloadSSL();
+//            CertbotHook.setupHook(this::reloadSSL);
+//        }
 
-        this.server.start();
+        this.royalUrServer.start();
         this.gameManager.start();
         this.bot = maybeStartDiscordBot();
         if (bot != null) {
             gameManager.addGameListener(bot);
         }
     }
+
+//    private void reloadSSL() {
+//        File certFile = new File(config.getSSLCertFile());
+//        File privateKeyFile = new File(config.getSSLPrivateKeyFile());
+//        String password = config.getSSLPassword();
+//        SSLContext context = LetsEncryptSSL.generateSSLContext(certFile, privateKeyFile, password);
+//        royalUrServer.setupSSL(context);
+//        logger.info("SSL encryption successfully configured.");
+//    }
 
     /** Starts the Discord bot if it is enabled. **/
     private DiscordBot maybeStartDiscordBot() {
@@ -82,7 +84,7 @@ public class RoyalUr {
                     bot.shutdown();
                 }
             } finally {
-                server.shutdown();
+                royalUrServer.shutdown();
             }
         }
     }

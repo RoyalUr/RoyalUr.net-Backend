@@ -1,26 +1,24 @@
 package net.sothatsit.royalurserver.network;
 
+import io.socket.engineio.server.EngineIoServerOptions;
+import io.socket.socketio.server.SocketIoNamespace;
+import io.socket.socketio.server.SocketIoSocket;
 import net.sothatsit.royalurserver.Logging;
 import net.sothatsit.royalurserver.RoyalUr;
 import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInOpen;
-import net.sothatsit.royalurserver.network.incoming.PacketReader;
 import net.sothatsit.royalurserver.network.incoming.PacketInReOpen;
+import net.sothatsit.royalurserver.network.incoming.PacketReader;
 import net.sothatsit.royalurserver.network.outgoing.PacketOutSetID;
 import net.sothatsit.royalurserver.scheduler.RepeatingTask;
 import net.sothatsit.royalurserver.scheduler.Scheduler;
 import net.sothatsit.royalurserver.util.Checks;
-import org.java_websocket.WebSocket;
-import org.java_websocket.handshake.ClientHandshake;
-import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
-import org.java_websocket.server.WebSocketServer;
 
-import javax.net.ssl.SSLContext;
-import java.io.IOException;
-import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
-import java.nio.channels.ServerSocketChannel;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -32,17 +30,7 @@ import java.util.logging.Logger;
  *
  * @author Paddy Lamont
  */
-public class Server extends WebSocketServer {
-
-    private static final Field SERVER_FIELD;
-    static {
-        try {
-            SERVER_FIELD = WebSocketServer.class.getDeclaredField("server");
-            SERVER_FIELD.setAccessible(true);
-        } catch (NoSuchFieldException exception) {
-            throw new RuntimeException(exception);
-        }
-    }
+public class RoyalUrServer {
 
     private static final int PURGE_TIMER_INTERVAL_SECS = 10;
     private static final int PURGE_LIMBO_SECS = 10;
@@ -51,19 +39,15 @@ public class Server extends WebSocketServer {
     private final Logger logger;
     private final Scheduler scheduler;
 
-    private final Map<WebSocket, Client> clients;
-    private final Map<WebSocket, Long> limboConnections;
+    private final SocketIOServlet servlet;
+    private final SocketIoNamespace servletNamespace;
+
+    private final Map<SocketIoSocket, Client> clients;
+    private final Map<SocketIoSocket, Long> limboConnections;
     private final Map<UUID, Client> disconnected;
     private final RepeatingTask clientPurgerTask;
 
-    private final Object startMonitor = new Object();
-    private Thread serverThread;
-    private boolean started = false;
-    private Exception startException;
-
-    public Server(int port, RoyalUr game) {
-        super(new InetSocketAddress(port));
-
+    public RoyalUrServer(int port, RoyalUr game) {
         Checks.ensureNonNull(game, "game");
 
         this.game = game;
@@ -77,101 +61,58 @@ public class Server extends WebSocketServer {
                 "server client purger", this::purgeDisconnected,
                 PURGE_TIMER_INTERVAL_SECS, TimeUnit.SECONDS
         );
+
+        this.servlet = new SocketIOServlet(
+                new InetSocketAddress(port),
+                EngineIoServerOptions.ALLOWED_CORS_ORIGIN_ALL
+        );
+        this.servletNamespace = servlet.namespace("/");
+
+        servletNamespace.on("connection", this::acceptConnection);
     }
 
-    public void setupSSL(SSLContext context) {
-        setWebSocketFactory(new DefaultSSLWebSocketServerFactory(context));
-        setConnectionLostTimeout(120);
-    }
+//    public void setupSSL(SSLContext context) {
+//        setSocketIoSocketFactory(new DefaultSSLSocketIoSocketServerFactory(context));
+//        setConnectionLostTimeout(120);
+//    }
 
-    @Override
     public void start() {
-        this.started = false;
-        this.startException = null;
-        this.serverThread = new Thread(this);
-
         try {
-            serverThread.start();
-
-            // Wait for the server to start
-            synchronized (startMonitor) {
-                startMonitor.wait();
-            }
-        } catch (Exception exception) {
-            RuntimeException toThrow = new RuntimeException("Exception starting thread", exception);
-
-            try {
-                stop();
-            } catch (Exception stopException) {
-                toThrow.addSuppressed(stopException);
-            }
-
-            throw toThrow;
-        }
-
-        if (startException != null)
-            throw new RuntimeException("Exception starting server at " + getAddress(), startException);
-    }
-
-    /**
-     * Properly close the socket. The standard WebSocketServer#close doesn't work.
-     */
-    private void killChannel() {
-        ServerSocketChannel channel;
-        try {
-            channel = (ServerSocketChannel) SERVER_FIELD.get(this);
-        } catch (IllegalAccessException exception) {
-            throw new RuntimeException("Exception getting WebSocketServer's channel", exception);
-        }
-
-        if (channel == null || !channel.isOpen())
-            return;
-
-        try {
-            channel.close();
-        } catch (IOException exception) {
-            throw new RuntimeException("Exception closing channel", exception);
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private void killServerThread() {
-        serverThread.stop();
-    }
-
-    @Override
-    public void stop(int timeout) {
-        try {
-            super.stop(timeout);
-            serverThread.interrupt();
-        } catch (InterruptedException exception) {
-            throw new RuntimeException("Interrupted waiting for server to stop", exception);
-        } finally {
-            try {
-                killChannel();
-            } finally {
-                killServerThread();
-            }
+            servlet.startServer();
+            logger.info("Listening on " + servlet.address);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
     public void stop() {
-        this.stop(0);
+        try {
+            servlet.stopServer();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void shutdown() {
+        if(clientPurgerTask != null) {
+            clientPurgerTask.cancel();
+        }
+        stop();
     }
 
     public void purgeDisconnected() {
         // Remove timed out limbo connections
-        Iterator<Map.Entry<WebSocket, Long>> limbo = limboConnections.entrySet().iterator();
+        Iterator<Map.Entry<SocketIoSocket, Long>> limbo = limboConnections.entrySet().iterator();
 
         while (limbo.hasNext()) {
-            Map.Entry<WebSocket, Long> entry = limbo.next();
+            Map.Entry<SocketIoSocket, Long> entry = limbo.next();
 
             long connectTime = entry.getValue();
             long timeInLimbo = (System.nanoTime() - connectTime) / 1000000;
 
             if (timeInLimbo >= PURGE_LIMBO_SECS) {
                 limbo.remove();
-                entry.getKey().close();
+                entry.getKey().disconnect(true);
             }
         }
 
@@ -188,30 +129,46 @@ public class Server extends WebSocketServer {
         }
     }
 
-    @Override
-    public void onStart() {
-        started = true;
-        scheduler.addTask(clientPurgerTask);
-        synchronized (startMonitor) {
-            startMonitor.notifyAll();
+    /**
+     * This function is called when a new connection is accepted.
+     * @param args The arguments describing the new connection.
+     */
+    private void acceptConnection(Object... args) {
+        if (args.length == 0)
+            throw new IllegalArgumentException("No arguments provided");
+
+        System.err.println("acceptConnection(): " + Arrays.toString(args));
+        if (args[0] == null) {
+            throw new IllegalArgumentException(
+                    "Expected the first argument to be of type " + SocketIoSocket.class + ", but it is null"
+            );
         }
-        logger.info("Listening on " + getPort());
+        if (!(args[0] instanceof SocketIoSocket)) {
+            throw new IllegalArgumentException(
+                    "Expected the first argument to be of type " + SocketIoSocket.class +
+                            ", but it is of type " + args[0].getClass()
+            );
+        }
+
+        SocketIoSocket socket = (SocketIoSocket) args[0];
+        acceptConnection(socket);
     }
 
-    public void shutdown() {
-        if(clientPurgerTask != null) {
-            clientPurgerTask.cancel();
-        }
-        stop();
-    }
-
-    @Override
-    public void onOpen(WebSocket socket, ClientHandshake clientHandshake) {
+    /**
+     * This function is called when a new connection is accepted.
+     * @param socket The socket for the connection.
+     */
+    private void acceptConnection(SocketIoSocket socket) {
         limboConnections.put(socket, System.currentTimeMillis());
+
+        socket.on("message", args -> acceptMessage(socket, args));
+        socket.on("disconnect", args -> onDisconnect(socket));
+        socket.on("error", args -> {
+            System.err.println("ERROR: " + Arrays.toString(args));
+        });
     }
 
-    @Override
-    public void onClose(WebSocket socket, int code, String reason, boolean remote) {
+    public void onDisconnect(SocketIoSocket socket) {
         limboConnections.remove(socket);
         Client client = clients.remove(socket);
         if(client == null)
@@ -223,12 +180,36 @@ public class Server extends WebSocketServer {
         game.onDisconnect(client);
     }
 
-    @Override
-    public void onMessage(WebSocket socket, String message) {
-        // Ignore messages from closing or closed sockets.
-        if (socket.isClosed() || socket.isClosing())
-            return;
+    /**
+     * This function is called when a new message is received from a socket.
+     * @param args The arguments containing the message.
+     */
+    private void acceptMessage(SocketIoSocket socket, Object... args) {
+        if (args.length == 0)
+            throw new IllegalArgumentException("No arguments provided");
 
+        System.err.println("acceptMessage(): " + Arrays.toString(args));
+        if (args[0] == null) {
+            throw new IllegalArgumentException(
+                    "Expected the first argument to be of type " + String.class + ", but it is null"
+            );
+        }
+        if (!(args[0] instanceof String)) {
+            throw new IllegalArgumentException(
+                    "Expected the first argument to be of type " + String.class +
+                            ", but it is of type " + args[0].getClass()
+            );
+        }
+
+        String message = (String) args[0];
+        acceptMessage(socket, message);
+    }
+
+    /**
+     * This function is called when a new connection is accepted.
+     * @param socket The socket for the connection.
+     */
+    private void acceptMessage(SocketIoSocket socket, String message) {
         Client client = clients.get(socket);
         PacketIn packet;
         try {
@@ -267,7 +248,7 @@ public class Server extends WebSocketServer {
         }
     }
 
-    private void connectClient(WebSocket socket, PacketIn packet) {
+    private void connectClient(SocketIoSocket socket, PacketIn packet) {
         Checks.ensureNonNull(socket, "socket");
         Checks.ensureNonNull(packet, "packet");
 
@@ -318,28 +299,4 @@ public class Server extends WebSocketServer {
 
         game.onConnect(client, isReconnect);
     }
-
-    @Override
-    public void onError(WebSocket socket, Exception exception) {
-        if(!started) {
-            if (startException == null) {
-                startException = exception;
-            } else {
-                startException.addSuppressed(exception);
-            }
-
-            synchronized (startMonitor) {
-                startMonitor.notifyAll();
-            }
-            return;
-        }
-
-        Client client = clients.get(socket);
-        if(socket == null || client == null) {
-            game.onError(exception);
-        } else {
-            game.onError(client, exception);
-        }
-    }
-
 }
