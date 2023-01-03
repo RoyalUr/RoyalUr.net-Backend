@@ -136,7 +136,7 @@ public class Client {
     public void send(PacketOut packet) {
         Checks.ensureNonNull(packet, "packet");
         Checks.ensureState(isSocketOpen(), "cannot send packet to disconnected client");
-        socket.send(packet.write());
+        socket.send("message", packet.write());
     }
 
     @Override
