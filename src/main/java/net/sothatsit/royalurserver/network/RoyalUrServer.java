@@ -39,7 +39,7 @@ public class RoyalUrServer {
     private final Logger logger;
     private final Scheduler scheduler;
 
-    private final SocketIOServlet servlet;
+    private final SocketIoServlet servlet;
     private final SocketIoNamespace servletNamespace;
 
     private final Map<SocketIoSocket, Client> clients;
@@ -62,7 +62,7 @@ public class RoyalUrServer {
                 PURGE_TIMER_INTERVAL_SECS, TimeUnit.SECONDS
         );
 
-        this.servlet = new SocketIOServlet(
+        this.servlet = new SocketIoServlet(
                 new InetSocketAddress(port),
                 EngineIoServerOptions.ALLOWED_CORS_ORIGIN_ALL
         );

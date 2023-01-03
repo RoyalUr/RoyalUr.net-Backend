@@ -11,13 +11,13 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 
 import javax.servlet.DispatcherType;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -27,7 +27,7 @@ import java.util.EnumSet;
  * Handles the HTTP and WebSocket servers that are used
  * to handle Socket.io connections.
  */
-public class SocketIOServlet {
+public class SocketIoServlet {
 
     public final InetSocketAddress address;
     public final String[] allowedCORSOrigins;
@@ -36,7 +36,7 @@ public class SocketIOServlet {
     protected final EngineIoServer engineIoServer;
     protected final SocketIoServer socketIoServer;
 
-    public SocketIOServlet(InetSocketAddress address, String[] allowedCORSOrigins) {
+    public SocketIoServlet(InetSocketAddress address, String[] allowedCORSOrigins) {
         this.address = address;
         this.allowedCORSOrigins = allowedCORSOrigins;
 
@@ -44,6 +44,7 @@ public class SocketIOServlet {
         server = new Server(address);
 
         EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
+        eioOptions.setAllowSyncPolling(false);
         eioOptions.setAllowedCorsOrigins(allowedCORSOrigins);
 
         engineIoServer = new EngineIoServer(eioOptions);
@@ -57,24 +58,19 @@ public class SocketIOServlet {
         servletContextHandler.addServlet(new ServletHolder(new HttpServlet() {
             @Override
             protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
-                engineIoServer.handleRequest(new HttpServletRequestWrapper(request) {
-                    @Override
-                    public boolean isAsyncSupported() {
-                        return false;
-                    }
-                }, response);
+                engineIoServer.handleRequest(request, response);
             }
         }), "/socket.io/*");
 
         // Handle WebSocket requests.
         try {
-            WebSocketUpgradeFilter webSocketUpgradeFilter = WebSocketUpgradeFilter.configureContext(
-                    servletContextHandler
-            );
-            webSocketUpgradeFilter.addMapping(
-                    new ServletPathSpec("/socket.io/*"),
-                    (servletUpgradeRequest, servletUpgradeResponse) -> new JettyWebSocketHandler(engineIoServer)
-            );
+            WebSocketUpgradeFilter.configure(servletContextHandler);
+            NativeWebSocketServletContainerInitializer.configure(servletContextHandler, (ctx, config) -> {
+                config.addMapping(
+                        new ServletPathSpec("/socket.io/*"),
+                        (servletUpgradeRequest, servletUpgradeResponse) -> new JettyWebSocketHandler(engineIoServer)
+                );
+            });
         } catch (ServletException ex) {
             ex.printStackTrace();
         }

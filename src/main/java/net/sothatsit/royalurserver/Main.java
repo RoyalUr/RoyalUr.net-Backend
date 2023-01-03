@@ -17,6 +17,7 @@ public class Main {
         // Set SLF4J-Simple to have the INFO log level.
         System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO");
 
+
         RoyalUr.logger.info("Starting RoyalUr.net server v" + RoyalUr.VERSION);
         RoyalUr game = new RoyalUr(DEFAULT_PORT);
 
