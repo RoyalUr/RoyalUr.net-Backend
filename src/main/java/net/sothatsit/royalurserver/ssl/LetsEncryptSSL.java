@@ -1,10 +1,7 @@
-package net.sothatsit.royalurserver.util;
+package net.sothatsit.royalurserver.ssl;
 
 import jakarta.xml.bind.DatatypeConverter;
 
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -28,21 +25,19 @@ public class LetsEncryptSSL {
 
     /**
      * @param certFile The certificate file to use, cert.pem.
-     * @param privKeyFile The private key file to use, privkey.pem.
-     * @return an SSLContext to use to support SSL-encrypted WebSocket connections.
+     * @param privateKeyFile The private key file to use, privkey.pem.
+     * @param password The password of the key.
+     * @return A key to use to support SSL-encrypted connections.
      */
-    public static SSLContext generateSSLContext(File certFile, File privKeyFile, String password) {
-        SSLContext context;
+    public static KeyInfo loadKey(File certFile, File privateKeyFile, String password) {
         try {
-            context = SSLContext.getInstance("TLS");
-
             byte[] certBytes = parseDERFromPEM(
                     getBytes(certFile),
                     "-----BEGIN CERTIFICATE-----",
                     "-----END CERTIFICATE-----"
             );
             byte[] keyBytes = parseDERFromPEM(
-                    getBytes(privKeyFile),
+                    getBytes(privateKeyFile),
                     "-----BEGIN PRIVATE KEY-----",
                     "-----END PRIVATE KEY-----"
             );
@@ -55,26 +50,30 @@ public class LetsEncryptSSL {
             keystore.setCertificateEntry("cert-alias", cert);
             keystore.setKeyEntry("key-alias", key, password.toCharArray(), new Certificate[] {cert});
 
-            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-            kmf.init(keystore, password.toCharArray());
-
-            KeyManager[] km = kmf.getKeyManagers();
-            context.init(km, null, null);
+            return new KeyInfo(keystore, password);
         } catch (Exception e) {
-            context = null;
+            throw new RuntimeException(e);
         }
-        return context;
     }
 
     public static byte[] parseDERFromPEM(byte[] pem, String beginDelimiter, String endDelimiter) {
         String data = new String(pem);
-        String[] tokens = data.split(beginDelimiter);
-        tokens = tokens[1].split(endDelimiter);
-        return DatatypeConverter.parseBase64Binary(tokens[0]);
+
+        int beginIndex = data.indexOf(beginDelimiter);
+        if (beginIndex < 0)
+            throw new IllegalArgumentException("Malformed key, expected start delimiter");
+
+        int endIndex = data.indexOf(endDelimiter);
+        if (endIndex < 0)
+            throw new IllegalArgumentException("Malformed key, expected end delimiter");
+
+        String content = data.substring(beginIndex + beginDelimiter.length(), endIndex);
+        return DatatypeConverter.parseBase64Binary(content);
     }
 
-    public static RSAPrivateKey generatePrivateKeyFromDER(byte[] keyBytes)
-            throws InvalidKeySpecException, NoSuchAlgorithmException {
+    public static RSAPrivateKey generatePrivateKeyFromDER(
+            byte[] keyBytes
+    ) throws InvalidKeySpecException, NoSuchAlgorithmException {
 
         PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
         KeyFactory factory = KeyFactory.getInstance("RSA");
@@ -86,11 +85,7 @@ public class LetsEncryptSSL {
         return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certBytes));
     }
 
-    public static byte[] getBytes(File file) {
-        try {
-            return Files.readAllBytes(file.toPath());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public static byte[] getBytes(File file) throws IOException {
+        return Files.readAllBytes(file.toPath());
     }
 }

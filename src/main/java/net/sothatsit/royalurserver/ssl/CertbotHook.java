@@ -1,4 +1,6 @@
-package net.sothatsit.royalurserver;
+package net.sothatsit.royalurserver.ssl;
+
+import net.sothatsit.royalurserver.Logging;
 
 import java.io.File;
 import java.io.FileWriter;

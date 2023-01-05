@@ -10,9 +10,14 @@ import net.sothatsit.royalurserver.network.incoming.PacketIn;
 import net.sothatsit.royalurserver.network.incoming.PacketInCreateGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInJoinGame;
+import net.sothatsit.royalurserver.ssl.KeyInfo;
+import net.sothatsit.royalurserver.ssl.LetsEncryptSSL;
 import net.sothatsit.royalurserver.util.Checks;
 
+import javax.annotation.Nullable;
 import javax.security.auth.login.LoginException;
+import java.io.File;
+import java.security.KeyStore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,24 +32,18 @@ public class RoyalUr {
     public static final Logger logger = Logging.getLogger("main");
 
     private final Config config;
-    private final RoyalUrServer royalUrServer;
+    private final RoyalUrServer server;
     private final GameManager gameManager;
     private final MatchMaker matchmaker;
-    private final DiscordBot bot;
+    private final @Nullable DiscordBot bot;
 
-    public RoyalUr(int serverPort) {
+    public RoyalUr() {
         this.config = Config.read();
-        this.royalUrServer = new RoyalUrServer(serverPort, this);
+        this.server = new RoyalUrServer(this, maybeLoadSSLKey());
         this.gameManager = new GameManager();
         this.matchmaker = new MatchMaker(gameManager);
 
-        // If SSL is configured, set it up.
-//        if (config.useSSL()) {
-//            reloadSSL();
-//            CertbotHook.setupHook(this::reloadSSL);
-//        }
-
-        this.royalUrServer.start();
+        this.server.start();
         this.gameManager.start();
         this.bot = maybeStartDiscordBot();
         if (bot != null) {
@@ -52,14 +51,21 @@ public class RoyalUr {
         }
     }
 
-//    private void reloadSSL() {
-//        File certFile = new File(config.getSSLCertFile());
-//        File privateKeyFile = new File(config.getSSLPrivateKeyFile());
-//        String password = config.getSSLPassword();
-//        SSLContext context = LetsEncryptSSL.generateSSLContext(certFile, privateKeyFile, password);
-//        royalUrServer.setupSSL(context);
-//        logger.info("SSL encryption successfully configured.");
-//    }
+    private @Nullable KeyInfo maybeLoadSSLKey() {
+        return config.useSSL() ? loadSSLKey() : null;
+    }
+
+    private KeyInfo loadSSLKey() {
+        File certFile = new File(config.getSSLCertFile());
+        File privateKeyFile = new File(config.getSSLPrivateKeyFile());
+        String password = config.getSSLPassword();
+        return LetsEncryptSSL.loadKey(certFile, privateKeyFile, password);
+    }
+
+    public void reloadSSL() {
+        server.reloadSSL(loadSSLKey());
+        logger.info("SSL encryption has been reloaded");
+    }
 
     /** Starts the Discord bot if it is enabled. **/
     private DiscordBot maybeStartDiscordBot() {
@@ -84,7 +90,7 @@ public class RoyalUr {
                     bot.shutdown();
                 }
             } finally {
-                royalUrServer.shutdown();
+                server.stop();
             }
         }
     }
@@ -139,7 +145,7 @@ public class RoyalUr {
         }
 
         switch (packet.type) {
-            case JOIN_GAME:
+            case JOIN_GAME -> {
                 PacketInJoinGame joinGamePacket = (PacketInJoinGame) packet;
                 if (matchmaker.isGameGenerated(joinGamePacket.gameID)) {
                     matchmaker.joinGeneratedGame(joinGamePacket.gameID, client);
@@ -148,19 +154,13 @@ public class RoyalUr {
                 } else {
                     gameManager.onJoinGame(client, joinGamePacket.gameID, true);
                 }
-                break;
-
-            case FIND_GAME:
-                matchmaker.findMatchFor(client, (PacketInFindGame) packet);
-                break;
-
-            case CREATE_GAME:
-                matchmaker.createPendingMatch(client, (PacketInCreateGame) packet);
-                break;
-
-            default:
+            }
+            case FIND_GAME -> matchmaker.findMatchFor(client, (PacketInFindGame) packet);
+            case CREATE_GAME -> matchmaker.createPendingMatch(client, (PacketInCreateGame) packet);
+            default -> {
                 client.error("Unexpected packet " + packet.type + " while not in game");
                 throw new IllegalStateException(client + " not in game but sent " + packet);
+            }
         }
     }
 

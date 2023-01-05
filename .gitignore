@@ -3,3 +3,9 @@
 target/
 server/
 RoyalUrServer.iml
+
+# Local Testing.
+localhost.crt
+localhost.key
+localhost.nopass.key
+localhost_config.json
