@@ -6,6 +6,7 @@ import net.sothatsit.royalurserver.network.outgoing.PacketOutError;
 import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.Time;
 
+import java.util.Random;
 import java.util.UUID;
 
 /**
@@ -24,6 +25,10 @@ public class Client {
 
     public static final int MAX_NAME_LENGTH = 12;
     public static final long DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
+
+    private static final String[] DEFAULT_NAMES = {
+            "Panda", "Lion", "Tiger", "Bear", "Shark", "Mittens"
+    };
 
     private String name;
     public final UUID id;
@@ -146,6 +151,11 @@ public class Client {
 
     /** Sanitises the given name to limit it to the max name length. **/
     public static String sanitiseName(String name) {
-        return name.replaceAll("[^\\x00-\\x7F]", "").substring(0, Math.min(name.length(), MAX_NAME_LENGTH));
+        name = name.replaceAll("[^\\x00-\\x7F]", "").trim();
+        if (name.isEmpty()) {
+            // Pick a random name.
+            name = DEFAULT_NAMES[new Random().nextInt(DEFAULT_NAMES.length)];
+        }
+        return name.substring(0, Math.min(name.length(), MAX_NAME_LENGTH));
     }
 }

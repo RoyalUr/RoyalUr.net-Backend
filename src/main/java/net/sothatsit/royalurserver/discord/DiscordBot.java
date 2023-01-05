@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.MiscUtil;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
@@ -42,11 +43,9 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
         this.matchMaker = matchMaker;
         this.gameManager = gameManager;
         this.jda = JDABuilder.createDefault(token)
-                .disableCache(
-                        CacheFlag.MEMBER_OVERRIDES,
-                        CacheFlag.VOICE_STATE,
-                        CacheFlag.ACTIVITY
-                ).build();
+                .disableCache(CacheFlag.MEMBER_OVERRIDES, CacheFlag.VOICE_STATE, CacheFlag.ACTIVITY)
+                .enableIntents(GatewayIntent.MESSAGE_CONTENT, GatewayIntent.DIRECT_MESSAGES)
+                .build();
         this.jda.addEventListener(this);
     }
 
@@ -246,9 +245,12 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
         String winnerName = (isUnknownName(winner.name) ? "An unknown player" : winner.name);
         String loserName = (isUnknownName(loser.name) ? "an unknown player" : loser.name);
 
+        int winnerAdvancement = game.measureAdvancementMetric(winner.player);
+        int loserAdvancement = game.measureAdvancementMetric(loser.player);
+
         String message = "**" + winnerName + "** just defeated **" + loserName + "**";
         message += " as " + winner.player.name;
-        message += " with a score of " + winner.getScore() + " to " + loser.getScore() + "!";
+        message += " with advancement of " + winnerAdvancement + " to " + loserAdvancement + "!";
         channel.sendMessage(message).queue();
     }
 }

@@ -117,6 +117,26 @@ public class Game {
         return getState(currentPlayer.getOtherPlayer());
     }
 
+    /**
+     * Measures the total advancement of all pieces of {@code player}.
+     * @param player The player to measure the total advancement of.
+     * @return The total advancement of all pieces.
+     */
+    public int measureAdvancementMetric(Player player) {
+        PlayerState playerState = getState(player);
+        List<Location> path = Location.getPath(player);
+
+        int scoredPieceAdvancement = path.size() - 1;
+        int advancement = scoredPieceAdvancement * playerState.getScore();
+        for (int index = 1; index < path.size() - 1; ++index) {
+            Location location = path.get(index);
+            if (board.getOwner(location) == player) {
+                advancement += index;
+            }
+        }
+        return advancement;
+    }
+
     public boolean isInactive() {
         // TODO : Should check the last time they were connected to this game.
         //        They could have changed games and this won't pick that up.

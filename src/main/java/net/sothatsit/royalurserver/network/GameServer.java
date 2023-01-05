@@ -121,7 +121,6 @@ public class GameServer {
         if (args.length == 0)
             throw new IllegalArgumentException("No arguments provided");
 
-        System.err.println("acceptConnection(): " + Arrays.toString(args));
         if (args[0] == null) {
             throw new IllegalArgumentException(
                     "Expected the first argument to be of type " + SocketIoSocket.class + ", but it is null"
@@ -172,7 +171,6 @@ public class GameServer {
         if (args.length == 0)
             throw new IllegalArgumentException("No arguments provided");
 
-        System.err.println("acceptMessage(): " + Arrays.toString(args));
         if (args[0] == null) {
             throw new IllegalArgumentException(
                     "Expected the first argument to be of type " + String.class + ", but it is null"

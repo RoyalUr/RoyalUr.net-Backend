@@ -17,7 +17,6 @@ import net.sothatsit.royalurserver.util.Checks;
 import javax.annotation.Nullable;
 import javax.security.auth.login.LoginException;
 import java.io.File;
-import java.security.KeyStore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -73,7 +72,9 @@ public class RoyalUr {
             return null;
 
         try {
-            return new DiscordBot(config.getDiscordToken(), matchmaker, gameManager);
+            DiscordBot bot = new DiscordBot(config.getDiscordToken(), matchmaker, gameManager);
+            System.out.println("Started Discord Bot");
+            return bot;
         } catch (LoginException e) {
             new RuntimeException("Error starting Discord bot", e).printStackTrace();
             return null;
