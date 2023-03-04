@@ -3,26 +3,19 @@ package net.sothatsit.royalurserver.network.incoming;
 import net.sothatsit.royalurserver.game.GameID;
 
 /**
- * A packet sent to request to join a game.
- *
- * @author Paddy Lamont
+ * An incoming packet relating to a specific game.
  */
-public class PacketInJoinGame extends PacketIn {
+public abstract class GamePacketIn extends PacketIn {
 
     public GameID gameID;
 
-    public PacketInJoinGame() {
-        super(Type.JOIN_GAME);
+    public GamePacketIn(Type type) {
+        super(type);
     }
 
     @Override
     public void readContents(PacketReader reader) {
         super.readContents(reader);
         this.gameID = GameID.read(reader);
-    }
-
-    @Override
-    public String toString() {
-        return "PacketInJoinGame(gameID=" + gameID + ")";
     }
 }

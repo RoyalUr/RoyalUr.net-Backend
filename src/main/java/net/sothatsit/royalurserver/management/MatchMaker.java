@@ -1,14 +1,17 @@
 package net.sothatsit.royalurserver.management;
 
+import net.sothatsit.royalurserver.RoyalUrNetIdentity;
 import net.sothatsit.royalurserver.game.GameID;
+import net.sothatsit.royalurserver.game.GameSettings;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.network.incoming.PacketInCreateGame;
 import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
 import net.sothatsit.royalurserver.network.outgoing.PacketOutGamePending;
-import net.sothatsit.royalurserver.network.outgoing.PacketOutInvalidGame;
 
+import javax.annotation.Nonnull;
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Creates games between players that are searching for a game.
@@ -19,14 +22,15 @@ public class MatchMaker {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    private final GameRepository gameRepository;
     private final GameManager gameManager;
 
     private final Object lock = new Object();
     private Client waitingClient = null;
     private final Map<GameID, Client> pendingGames = new HashMap<>();
-    private final Set<GameID> generatedGames = new HashSet<>();
 
-    public MatchMaker(GameManager gameManager) {
+    public MatchMaker(GameRepository gameRepository, GameManager gameManager) {
+        this.gameRepository = gameRepository;
         this.gameManager = gameManager;
     }
 
@@ -36,61 +40,48 @@ public class MatchMaker {
     }
 
     /** @return whether {@param gameID} corresponds to a generated game which has had no one connect. **/
-    public boolean isGameGenerated(GameID gameID) {
-        synchronized (lock) {
-            return generatedGames.contains(gameID);
-        }
+    public boolean isGameReserved(GameID gameID) {
+        GameRepositoryEntry entry = gameRepository.get(gameID);
+        return entry != null && entry.isReservation();
     }
 
-    /** Converts a generated game into a pending game with the given client. **/
-    public void joinGeneratedGame(GameID gameID, Client client) {
-        synchronized (lock) {
-            if (!generatedGames.remove(gameID)) {
-                client.send(new PacketOutInvalidGame(gameID));
-                return;
-            }
-            createPendingMatch(gameID, client);
-        }
-    }
+    /**
+     * Creates or starts a pending game for the given reserved game ID.
+     */
+    public void joinReservedGame(GameID gameID, Client client) {
+        GameRepositoryEntry entry = gameRepository.get(gameID);
+        if (entry == null || !entry.isReservation())
+            throw new IllegalArgumentException("Game is not reserved: " + gameID);
 
-    /** @return whether {@param gameID} corresponds to a currently pending game. **/
-    public boolean isGamePending(GameID gameID) {
         synchronized (lock) {
-            return pendingGames.containsKey(gameID);
-        }
-    }
+            Client pendingClient = pendingGames.get(gameID);
 
-    /** Starts a pending game when an opponent joins. **/
-    public void startPendingGame(GameID gameID, Client opponentClient) {
-        synchronized (lock) {
-            Client client = pendingGames.get(gameID);
-            if (client == null) {
-                opponentClient.send(new PacketOutInvalidGame(gameID));
+            if (pendingClient == null) {
+                createPendingGame(gameID, client);
                 return;
             }
 
-            // The client just refreshed their browser while waiting for a pending game.
-            if (client == opponentClient) {
-                opponentClient.send(new PacketOutGamePending(gameID));
+            if (pendingClient == client) {
+                client.send(new PacketOutGamePending(gameID));
                 return;
             }
 
-            pendingGames.remove(gameID);
-            boolean flag = RANDOM.nextBoolean();
-            Client light = (flag ? client : opponentClient);
-            Client dark = (flag ? opponentClient : client);
-            gameManager.startGame(gameID, light, dark);
+            startPendingGame(gameID, client, pendingClient);
         }
     }
 
-    /** Creates a pending match for an opponent to join by link. **/
-    public void createPendingMatch(Client client, PacketInCreateGame packet) {
-        GameID gameID = gameManager.nextGameID();
-        createPendingMatch(gameID, client);
+    /**
+     * Reserves a game ID for the given client.
+     */
+    public void createPendingGame(Client client, PacketInCreateGame packet) {
+        GameID gameID = gameManager.reserveGameID(GameSettings.STANDARD, client);
+        createPendingGame(gameID, client);
     }
 
-    /** Creates a pending match for an opponent to join by link. **/
-    public void createPendingMatch(GameID gameID, Client client) {
+    /**
+     * Creates a pending game for the given client.
+     */
+    private void createPendingGame(GameID gameID, Client client) {
         synchronized (lock) {
             pendingGames.put(gameID, client);
             if (waitingClient == client) {
@@ -100,41 +91,60 @@ public class MatchMaker {
         client.send(new PacketOutGamePending(gameID));
     }
 
-    /** Generates a new game for two players to connect to from a link. **/
-    public GameID generateGame() {
-        GameID gameID = gameManager.nextGameID();
+    /**
+     * Starts a pending game when an opponent joins.
+     **/
+    private void startPendingGame(GameID gameID, Client client1, Client client2) {
+        if (client1 == client2)
+            throw new IllegalArgumentException("A client cannot play themselves!");
+
         synchronized (lock) {
-            generatedGames.add(gameID);
+            Client known = pendingGames.remove(gameID);
+            if (known == null)
+                throw new IllegalArgumentException("The game ID is not pending: " + gameID);
         }
-        return gameID;
+        startGame(gameID, client1, client2);
     }
 
-    /** Attempts to find a match for {@param client} to play. **/
+    private void startGame(GameID gameID, Client client1, Client client2) {
+        boolean flag = RANDOM.nextBoolean();
+        Client lightClient = (flag ? client1 : client2);
+        Client darkClient = (flag ? client2 : client1);
+        gameManager.startGame(gameID, lightClient, darkClient);
+
+    }
+
+    /**
+     * Places the given client into the match-making queue.
+     */
     public void findMatchFor(Client client, PacketInFindGame packet) {
+        Client opponentClient;
         synchronized (lock) {
             if(waitingClient == null) {
                 waitingClient = client;
                 return;
             }
-
-            if (waitingClient == client) {
-                waitingClient = null;
-                client.error("You cannot request to be found two games");
+            if (waitingClient == client)
                 return;
-            }
 
-            boolean flag = RANDOM.nextBoolean();
-            Client light = (flag ? waitingClient : client);
-            Client dark = (flag ? client : waitingClient);
-
-            gameManager.startGame(light, dark);
+            opponentClient = waitingClient;
             waitingClient = null;
         }
+
+        GameID gameID = gameManager.reserveGameID(GameSettings.STANDARD, client);
+        startGame(gameID, opponentClient, client);
+    }
+
+    /**
+     * Reserves a game ID for the bot.
+     */
+    public @Nonnull GameID reserveBotGame(RoyalUrNetIdentity identity) {
+        return gameRepository.reserveGameID(GameSettings.STANDARD, identity);
     }
 
     public void onClientDisconnect(Client client) {
         synchronized (lock) {
-            if(waitingClient == client) {
+            if (waitingClient == client) {
                 waitingClient = null;
             }
         }

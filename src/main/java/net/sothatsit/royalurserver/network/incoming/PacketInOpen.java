@@ -16,6 +16,7 @@ public class PacketInOpen extends PacketIn {
 
     @Override
     protected void readContents(PacketReader reader) {
+        super.readContents(reader);
         this.protocolVersion = reader.nextInt(4);
         this.name = reader.nextVarString(2);
     }

@@ -1,5 +1,7 @@
 package net.sothatsit.royalurserver;
 
+import net.sothatsit.royalurserver.game.GameID;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
@@ -47,7 +49,16 @@ public class Logging {
         }
     };
 
-    /** @return The Logger {@param name} with a custom log formatter. **/
+    /**
+     * @return A logger for the game with the given ID.
+     */
+    public static Logger getGameLogger(GameID gameID) {
+        return getLogger("Game " + gameID);
+    }
+
+    /**
+     * @return A logger with the given name and a custom log formatter.
+     */
     public static Logger getLogger(String name) {
         Logger logger = Logger.getLogger(name);
 

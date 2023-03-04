@@ -2,6 +2,8 @@ package net.sothatsit.royalurserver.network.outgoing;
 
 import net.sothatsit.royalurserver.util.Checks;
 
+import javax.annotation.Nonnull;
+
 /**
  * Allows the construction of outgoing packets.
  *
@@ -11,20 +13,20 @@ public abstract class PacketOut {
 
     public final Type type;
 
-    public PacketOut(Type type) {
+    public PacketOut(@Nonnull Type type) {
         Checks.ensureNonNull(type, "type");
         this.type = type;
     }
 
     /** @return this packet written out to a String. **/
-    public String write() {
+    public @Nonnull String write() {
         PacketWriter writer = new PacketWriter(type);
         writeContents(writer);
         return writer.toString();
     }
 
     /** Write the contents of the packet. **/
-    protected void writeContents(PacketWriter writer) {
+    protected void writeContents(@Nonnull PacketWriter writer) {
         // Some packets contain no contents.
     }
 
@@ -35,20 +37,19 @@ public abstract class PacketOut {
     public enum Type {
         ERROR("error"),
         SET_ID("set_id"),
-        INVALID_GAME("invalid_game"),
+        GAME_INVALID("invalid_game"),
         GAME_PENDING("game_pending"),
-        GAME("game"),
+        GAME_METADATA("game"),
         GAME_END("game_end"),
-        MESSAGE("message"),
-        PLAYER_STATUS("player_status"),
-        STATE("state"),
-        MOVE("move");
+        GAME_MESSAGE("message"),
+        GAME_PLAYER_STATUS("player_status"),
+        GAME_STATE("state"),
+        GAME_MOVE("move");
 
         private final String name;
 
-        private Type(String name) {
+        Type(@Nonnull String name) {
             Checks.ensureNonNull(name, "name");
-
             this.name = name;
         }
 
@@ -58,12 +59,12 @@ public abstract class PacketOut {
         }
 
         /** @return A human-readable name for this packet type. **/
-        public String getName() {
+        public @Nonnull String getName() {
             return name;
         }
 
         @Override
-        public String toString() {
+        public @Nonnull String toString() {
             return "PACKET_OUT_" + name();
         }
     }

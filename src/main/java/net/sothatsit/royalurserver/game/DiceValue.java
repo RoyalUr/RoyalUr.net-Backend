@@ -1,6 +1,8 @@
 package net.sothatsit.royalurserver.game;
 
 import net.sothatsit.royalurserver.util.Checks;
+
+import javax.annotation.Nonnull;
 import java.util.Random;
 
 /**
@@ -25,7 +27,7 @@ public enum DiceValue {
     private final int id;
     private final boolean isUp;
 
-    private DiceValue(String name, int id, boolean isUp) {
+    DiceValue(String name, int id, boolean isUp) {
         Checks.ensureNonNull(name, "name");
         Checks.ensureSingleDigit(id, "id");
 
@@ -54,8 +56,12 @@ public enum DiceValue {
         return "DiceValue(" + name + ")";
     }
 
-    /** @return A random dice value. Has a 50% change of being up, 50% chance down. **/
-    public static DiceValue random(Random random) {
+    /**
+     * Generates a random dice value for a single dice.
+     * @param random The random number generator to use.
+     * @return A random dice value. Has a 50% change of being up, 50% chance down.
+     */
+    public static DiceValue random(@Nonnull Random random) {
         Checks.ensureNonNull(random, "random");
         if(random.nextBoolean()) {
             return UP[random.nextInt(UP.length)];
@@ -64,4 +70,18 @@ public enum DiceValue {
         }
     }
 
+    /**
+     * Counts the total number of dice that are up.
+     * @param values The value of each dice.
+     * @return The total number of dice that are up.
+     */
+    public static int count(@Nonnull DiceValue[] values) {
+        int value = 0;
+        for (DiceValue dice : values) {
+            if (dice.isUp()) {
+                value += 1;
+            }
+        }
+        return value;
+    }
 }

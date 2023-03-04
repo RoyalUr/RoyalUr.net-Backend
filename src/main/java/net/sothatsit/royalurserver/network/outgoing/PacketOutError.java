@@ -2,6 +2,8 @@ package net.sothatsit.royalurserver.network.outgoing;
 
 import net.sothatsit.royalurserver.util.Checks;
 
+import javax.annotation.Nonnull;
+
 /**
  * A packet sent to indicate an error occurred between them and the game.
  *
@@ -9,16 +11,17 @@ import net.sothatsit.royalurserver.util.Checks;
  */
 public class PacketOutError extends PacketOut {
 
-    private final String error;
+    private final @Nonnull String error;
 
-    public PacketOutError(String error) {
+    public PacketOutError(@Nonnull String error) {
         super(Type.ERROR);
         Checks.ensureNonNull(error, "error");
         this.error = error;
     }
 
     @Override
-    protected void writeContents(PacketWriter writer) {
+    protected void writeContents(@Nonnull PacketWriter writer) {
+        super.writeContents(writer);
         writer.pushRaw(error);
     }
 

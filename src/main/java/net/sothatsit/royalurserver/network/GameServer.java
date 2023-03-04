@@ -157,7 +157,7 @@ public class GameServer {
         if(client == null)
             return;
 
-        disconnected.put(client.id, client);
+        disconnected.put(client.getSessionID(), client);
 
         client.onDisconnect();
         game.onDisconnect(client);
@@ -194,15 +194,20 @@ public class GameServer {
     private void acceptMessage(SocketIoSocket socket, String message) {
         Client client = clients.get(socket);
         PacketIn packet;
+        PacketReader reader = null;
         try {
-            PacketReader reader = new PacketReader(message);
+            reader = new PacketReader(message);
             packet = reader.type.newPacket();
             packet.read(reader);
         } catch(Exception exception) {
             String exceptionName = exception.getClass().getSimpleName();
+            String packetTypeName = "packet";
+            if (reader != null) {
+                packetTypeName = reader.type + " packet";
+            }
             logger.log(
                     Level.WARNING,
-                    exceptionName + " reading packet \"" + message + "\": " + exception.getMessage()
+                    exceptionName + " reading " + packetTypeName + " \"" + message + "\": " + exception.getMessage()
             );
             Client errorClient;
             if (client == null) {
@@ -238,16 +243,16 @@ public class GameServer {
         int protocolVersion;
         boolean isReconnect = false;
 
-        switch(packet.type) {
+        switch (packet.type) {
             // When a client first connects.
-            case OPEN:
+            case OPEN -> {
                 PacketInOpen open = (PacketInOpen) packet;
                 client = new Client(open.name, UUID.randomUUID(), socket);
                 protocolVersion = open.protocolVersion;
-                break;
+            }
 
             // When a client attempts to re-connect.
-            case REOPEN:
+            case REOPEN -> {
                 PacketInReOpen reopen = (PacketInReOpen) packet;
                 client = disconnected.remove(reopen.previousID);
                 protocolVersion = reopen.protocolVersion;
@@ -259,13 +264,14 @@ public class GameServer {
                     isReconnect = true;
                     client.setName(reopen.name);
                 }
-                break;
+            }
 
             // Uh oh.
-            default:
+            default -> {
                 new Client("unknown", UUID.randomUUID(), socket)
                         .error("Expected open or reopen packet");
                 return;
+            }
         }
 
         if (protocolVersion != Client.PROTOCOL_VERSION) {
@@ -277,7 +283,7 @@ public class GameServer {
         limboConnections.remove(socket);
 
         client.onConnect(socket);
-        client.send(new PacketOutSetID(client.id));
+        client.send(new PacketOutSetID(client.getSessionID()));
 
         game.onConnect(client, isReconnect);
     }

@@ -82,7 +82,7 @@ public class PacketWriter {
         String string = Integer.toString(value);
         Checks.ensure(string.length() <= digits, "value has too many digits");
 
-        for(int index = string.length(); index < digits; ++index) {
+        for (int index = string.length(); index < digits; ++index) {
             dataBuilder.append('0');
         }
         dataBuilder.append(string);

@@ -4,7 +4,6 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -12,17 +11,15 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.MiscUtil;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import net.sothatsit.royalurserver.game.Game;
 import net.sothatsit.royalurserver.game.GameID;
-import net.sothatsit.royalurserver.game.GameListener;
-import net.sothatsit.royalurserver.game.PlayerState;
+import net.sothatsit.royalurserver.game.SavedGame;
 import net.sothatsit.royalurserver.management.GameManager;
 import net.sothatsit.royalurserver.management.MatchMaker;
 import net.sothatsit.royalurserver.network.Client;
 
 import javax.security.auth.login.LoginException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -31,15 +28,17 @@ import java.util.regex.Matcher;
  * A discord bot for RoyalUr.net that allows the creation
  * of games directly through the Discord.
  */
-public class DiscordBot extends ListenerAdapter implements GameListener {
+public class DiscordBot extends ListenerAdapter {
 
     private static final String URL = "https://royalur.net";
 
+    public final DiscordBotIdentity identity;
     private final JDA jda;
     private final MatchMaker matchMaker;
     private final GameManager gameManager;
 
     public DiscordBot(String token, MatchMaker matchMaker, GameManager gameManager) throws LoginException {
+        this.identity = new DiscordBotIdentity();
         this.matchMaker = matchMaker;
         this.gameManager = gameManager;
         this.jda = JDABuilder.createDefault(token)
@@ -54,11 +53,7 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
     }
 
     private String encodeQueryParam(String param) {
-        try {
-            return URLEncoder.encode(param, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException("Error encoding name parameter", e);
-        }
+        return URLEncoder.encode(param, StandardCharsets.UTF_8);
     }
 
     private String generateGameURL(GameID gameID, String name) {
@@ -97,7 +92,7 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
                 reply.append("Generated game").append(games > 1 ? "s" : "").append("!\n\n");
 
                 for (int game = 0; game < games; ++game) {
-                    GameID gameID = matchMaker.generateGame();
+                    GameID gameID = matchMaker.reserveBotGame(identity);
                     String name1 = Client.sanitiseName(command[2 * game + 1]);
                     String name2 = Client.sanitiseName(command[2 * game + 2]);
 
@@ -110,7 +105,7 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
                 channel.sendMessage(reply).queue();
                 return;
             } else if (command.length == 1) {
-                GameID game = matchMaker.generateGame();
+                GameID game = matchMaker.reserveBotGame(identity);
 
                 StringBuilder reply = new StringBuilder();
                 reply.append("Generated new game!\n\n");
@@ -171,17 +166,17 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
         }
 
         if (command[0].equalsIgnoreCase("active-games")) {
-            List<Game> games = gameManager.getActiveGames();
+            List<SavedGame> games = gameManager.getActiveGames();
             if (games.isEmpty()) {
                 channel.sendMessage("There are no active games.").queue();
                 return;
             }
 
             StringBuilder response = new StringBuilder();
-            for (Game game : games) {
-                response.append("**").append(game.light.name).append("**");
+            for (SavedGame game : games) {
+                response.append("**").append(game.lightIdentity.name).append("**");
                 response.append(" vs. ");
-                response.append("**").append(game.dark.name).append("**: ");
+                response.append("**").append(game.darkIdentity.name).append("**: ");
                 response.append(generateGameURL(game.id, null)).append("\n");
             }
             channel.sendMessage(response).queue();
@@ -209,7 +204,7 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
     }
 
     private void createAndPMGame(User user1, User user2) {
-        GameID gameID = matchMaker.generateGame();
+        GameID gameID = matchMaker.reserveBotGame(identity);
         String name1 = Client.sanitiseName(user1.getName());
         String name2 = Client.sanitiseName(user2.getName());
 
@@ -231,26 +226,26 @@ public class DiscordBot extends ListenerAdapter implements GameListener {
         return "unknown".equalsIgnoreCase(name) || name.trim().isEmpty();
     }
 
-    @Override
-    public void onGameWin(Game game) {
-        TextChannel channel = jda.getTextChannelById(842998018575433738L);
-        if (channel == null)
-            return;
-
-        PlayerState winner = game.getWinner();
-        PlayerState loser = game.getLoser();
-        if (isUnknownName(winner.name) && isUnknownName(loser.name))
-            return;
-
-        String winnerName = (isUnknownName(winner.name) ? "An unknown player" : winner.name);
-        String loserName = (isUnknownName(loser.name) ? "an unknown player" : loser.name);
-
-        int winnerAdvancement = game.measureAdvancementMetric(winner.player);
-        int loserAdvancement = game.measureAdvancementMetric(loser.player);
-
-        String message = "**" + winnerName + "** just defeated **" + loserName + "**";
-        message += " as " + winner.player.name;
-        message += " with advancement of " + winnerAdvancement + " to " + loserAdvancement + "!";
-        channel.sendMessage(message).queue();
-    }
+//    @Override
+//    public void onGameWin(Game game) {
+//        TextChannel channel = jda.getTextChannelById(842998018575433738L);
+//        if (channel == null)
+//            return;
+//
+//        PlayerState winner = game.getWinner();
+//        PlayerState loser = game.getLoser();
+//        if (isUnknownName(winner.name) && isUnknownName(loser.name))
+//            return;
+//
+//        String winnerName = (isUnknownName(winner.name) ? "An unknown player" : winner.name);
+//        String loserName = (isUnknownName(loser.name) ? "an unknown player" : loser.name);
+//
+//        int winnerAdvancement = game.measureAdvancementMetric(winner.player);
+//        int loserAdvancement = game.measureAdvancementMetric(loser.player);
+//
+//        String message = "**" + winnerName + "** just defeated **" + loserName + "**";
+//        message += " as " + winner.player.name;
+//        message += " with advancement of " + winnerAdvancement + " to " + loserAdvancement + "!";
+//        channel.sendMessage(message).queue();
+//    }
 }

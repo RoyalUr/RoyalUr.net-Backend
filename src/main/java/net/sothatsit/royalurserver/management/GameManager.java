@@ -1,37 +1,34 @@
 package net.sothatsit.royalurserver.management;
 
-import net.sothatsit.royalurserver.game.Game;
 import net.sothatsit.royalurserver.game.GameID;
-import net.sothatsit.royalurserver.game.GameListener;
-import net.sothatsit.royalurserver.game.GameState;
+import net.sothatsit.royalurserver.game.GameSettings;
+import net.sothatsit.royalurserver.game.SavedGame;
 import net.sothatsit.royalurserver.network.Client;
-import net.sothatsit.royalurserver.network.outgoing.PacketOutInvalidGame;
+import net.sothatsit.royalurserver.network.outgoing.PacketOutGameInvalid;
 import net.sothatsit.royalurserver.scheduler.Scheduler;
 import net.sothatsit.royalurserver.util.Checks;
 
-import java.security.SecureRandom;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Manages all the games currently running.
+ * Manages the connection of clients to games.
  *
  * @author Paddy Lamont
  */
 public class GameManager {
 
-    private static final SecureRandom RANDOM = new SecureRandom();
-
     private final Scheduler scheduler = new Scheduler("game-manager", 1, TimeUnit.SECONDS);
 
+    private final GameRepository repository;
+
     private final Object lock = new Object();
-    private final Map<GameID, Game> games = new ConcurrentHashMap<>();
-    private final Map<Client, Game> clientActiveGames = new ConcurrentHashMap<>();
+    private final Map<GameID, ManagedGame> games = new HashMap<>();
 
-    private final List<GameListener> gameListeners = new ArrayList<>();
-
-    public GameManager() {
+    public GameManager(GameRepository repository) {
+        this.repository = repository;
         scheduler.scheduleRepeating("game-purger", this::purgeInactiveGames, 5, TimeUnit.SECONDS);
     }
 
@@ -40,166 +37,127 @@ public class GameManager {
     }
 
     public void stop() {
+        stopAll("Server is shutting down");
         scheduler.stop();
     }
 
-    public void addGameListener(GameListener listener) {
+    public boolean containsGame(@Nonnull GameID gameID) {
         synchronized (lock) {
-            for (Game game : games.values()) {
-                game.addGameListener(listener);
-            }
-            gameListeners.add(listener);
+            if (games.containsKey(gameID))
+                return true;
+        }
+
+        GameRepositoryEntry entry = repository.get(gameID);
+        return entry != null && entry.isGame();
+    }
+
+    public @Nullable ManagedGame getGameOrNull(@Nonnull GameID gameID) {
+        synchronized (lock) {
+            return games.get(gameID);
         }
     }
 
-    public void removeGameListener(GameListener listener) {
+    /**
+     * Note: The returned games are not thread-safe. Users beware!
+     */
+    public List<SavedGame> getActiveGames() {
+        List<SavedGame> gameSnapshots = new ArrayList<>();
         synchronized (lock) {
-            gameListeners.remove(listener);
-            for (Game game : games.values()) {
-                game.removeGameListener(listener);
+            for (ManagedGame game : games.values()) {
+                gameSnapshots.add(game.savedGame.copy());
             }
         }
+        return gameSnapshots;
     }
 
-    /** Note: The returned games are not thread-safe. Users beware! **/
-    public List<Game> getActiveGames() {
-        List<Game> games = new ArrayList<>();
+    private List<ManagedGame> findActiveGames(@Nonnull Client client) {
+        List<ManagedGame> activeGames = new ArrayList<>();
         synchronized (lock) {
-            for (Game game : clientActiveGames.values()) {
-                if (!games.contains(game)) {
-                    games.add(game);
+            for (ManagedGame game : games.values()) {
+                if (game.isPlayer(client)) {
+                    activeGames.add(game);
                 }
             }
         }
-        return games;
+        return activeGames;
     }
 
     public void purgeInactiveGames() {
+        List<ManagedGame> inactive = new ArrayList<>();
         synchronized (lock) {
-            List<Game> inactive = new ArrayList<>();
-            for(Game game : games.values()) {
-                if (!game.isInactive())
-                    continue;
-
-                inactive.add(game);
+            for (ManagedGame game : games.values()) {
+                if (game.isInactive()) {
+                    inactive.add(game);
+                }
             }
-            for(Game game : inactive) {
+            for (ManagedGame game : inactive) {
                 stopGame(game, "Game is inactive");
             }
         }
     }
 
-    public Game findActiveGame(Client client) {
-        Game game = clientActiveGames.get(client);
-        if(game != null && game.getState() == GameState.DONE) {
-            stopGame(game, "Game is done");
-            return null;
-        }
-        return game;
+    public @Nonnull GameID reserveGameID(@Nonnull GameSettings settings, @Nonnull Client client) {
+        return repository.reserveGameID(settings, client.getIdentity());
     }
 
-    public GameID nextGameID() {
-        return GameID.random(RANDOM);
-    }
-
-    public void startGame(Client light, Client dark) {
-        startGame(nextGameID(), light, dark);
-    }
-
-    public void startGame(GameID id, Client light, Client dark) {
-        Game game;
+    public void startGame(@Nonnull GameID id, @Nonnull Client light, @Nonnull Client dark) {
+        ManagedGame game;
         synchronized (lock) {
-            // This is kinda dodgy, but repeats should only occur _very_ rarely
-            while (games.containsKey(id)) {
-                id = GameID.random(RANDOM);
-            }
-            game = new Game(id, light, dark);
+            SavedGame savedGame = repository.createGame(id, light.getIdentity(), dark.getIdentity());
+            game = new ManagedGame(savedGame, light, dark);
             games.put(id, game);
-
-            for (GameListener listener : gameListeners) {
-                game.addGameListener(listener);
-            }
         }
 
-        onJoinGame(light, id, false);
-        onJoinGame(dark, id, false);
+        joinGame(id, light, false);
+        joinGame(id, dark, false);
     }
 
-    public void onJoinGame(Client client, GameID gameID, boolean isReconnect) {
+    public void joinGame(GameID gameID, Client client, boolean isReconnect) {
         synchronized (lock) {
-            Game activeGame = findActiveGame(client);
-            if (activeGame != null) {
-                if (activeGame.id.equals(gameID)) {
-                    client.error("Already part of game " + gameID);
-                    return;
-                }
-
-                activeGame.onDisconnect(client);
-                clientActiveGames.remove(client);
-            }
-
-            Game joinGame = games.get(gameID);
-            if (joinGame == null) {
-                client.send(new PacketOutInvalidGame(gameID));
+            ManagedGame game = games.get(gameID);
+            if (game == null) {
+                client.send(new PacketOutGameInvalid(gameID));
                 return;
             }
 
             if (isReconnect) {
-                joinGame.onReconnect(client);
+                game.onReconnect(client);
             } else {
-                joinGame.onJoin(client);
+                game.onJoin(client);
             }
-            clientActiveGames.put(client, joinGame);
         }
     }
 
     public void onClientDisconnect(Client client) {
-        synchronized (lock) {
-            Game game = findActiveGame(client);
-            if (game != null) {
-                game.onDisconnect(client);
-            }
-            clientActiveGames.remove(client);
+        List<ManagedGame> games = findActiveGames(client);
+        for (ManagedGame game : games) {
+            game.onDisconnect(client);
         }
     }
 
     public void onClientTimeout(Client client) {
-        synchronized (lock) {
-            Set<Game> toStop = new HashSet<>();
-            for (Game game : games.values()) {
-                if (game.isPlayer(client)) {
-                    toStop.add(game);
-                }
-            }
-            for (Game game : toStop) {
-                game.onTimeout(client);
-                stopGame(game, "Opponent left the game");
-            }
+        List<ManagedGame> games = findActiveGames(client);
+        for (ManagedGame game : games) {
+            stopGame(game, "Your opponent abandoned the game");
         }
     }
 
     public void stopAll(String reason) {
+        List<ManagedGame> games;
         synchronized (lock) {
-            List<Game> games = new ArrayList<>(this.games.values());
-            for(Game game : games) {
+            games = new ArrayList<>(this.games.values());
+            for (ManagedGame game : games) {
                 stopGame(game, reason);
             }
-            scheduler.stop();
         }
     }
 
-    public void stopGame(Game game, String reason) {
+    public void stopGame(ManagedGame game, String reason) {
         Checks.ensureNonNull(game, "game");
 
         synchronized (lock) {
-            clientActiveGames.remove(game.darkClient);
-            clientActiveGames.remove(game.lightClient);
-            games.remove(game.id);
-            game.stop(reason);
+            games.remove(game.getID());
         }
-    }
-
-    public List<Game> getGames() {
-        return Collections.unmodifiableList(new ArrayList<>(games.values()));
+        game.stop(reason);
     }
 }

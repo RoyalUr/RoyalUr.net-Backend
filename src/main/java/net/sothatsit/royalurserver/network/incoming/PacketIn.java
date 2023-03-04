@@ -47,13 +47,13 @@ public abstract class PacketIn {
         JOIN_GAME("join_game", PacketInJoinGame::new),
         FIND_GAME("find_game", PacketInFindGame::new),
         CREATE_GAME("create_game", PacketInCreateGame::new),
-        ROLL("roll", PacketInRoll::new),
-        MOVE("move", PacketInMove::new);
+        ROLL("roll", PacketInGameRoll::new),
+        MOVE("move", PacketInGameMove::new);
 
         private final String name;
         private final Supplier<PacketIn> packetConstructor;
 
-        private Type(String name, Supplier<PacketIn> packetConstructor) {
+        Type(String name, Supplier<PacketIn> packetConstructor) {
             Checks.ensureNonNull(name, "name");
             Checks.ensureNonNull(packetConstructor, "packetConstructor");
             this.name = name;

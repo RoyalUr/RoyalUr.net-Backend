@@ -1,11 +1,14 @@
 package net.sothatsit.royalurserver.network;
 
 import io.socket.socketio.server.SocketIoSocket;
+import net.sothatsit.royalurserver.RoyalUrNetIdentity;
 import net.sothatsit.royalurserver.network.outgoing.PacketOut;
 import net.sothatsit.royalurserver.network.outgoing.PacketOutError;
 import net.sothatsit.royalurserver.util.Checks;
 import net.sothatsit.royalurserver.util.Time;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Random;
 import java.util.UUID;
 
@@ -21,7 +24,7 @@ public class Client {
      * the server and the client should result in an
      * increase to the current protocol version.
      */
-    public static final int PROTOCOL_VERSION = 4;
+    public static final int PROTOCOL_VERSION = 5;
 
     public static final int MAX_NAME_LENGTH = 12;
     public static final long DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -31,7 +34,7 @@ public class Client {
     };
 
     private String name;
-    public final UUID id;
+    private final UUID sessionID;
 
     private SocketIoSocket socket;
     private boolean connected;
@@ -39,12 +42,12 @@ public class Client {
     private Time connectTime;
     private Time disconnectTime;
 
-    public Client(String name, UUID id, SocketIoSocket socket) {
-        Checks.ensureNonNull(id, "id");
+    public Client(String name, UUID sessionID, SocketIoSocket socket) {
+        Checks.ensureNonNull(sessionID, "sessionID");
         Checks.ensureNonNull(socket, "socket");
 
         setName(name);
-        this.id = id;
+        this.sessionID = sessionID;
         this.connectTime = Time.now();
         this.socket = socket;
         if (socket == null) {
@@ -53,14 +56,26 @@ public class Client {
         }
     }
 
+    /**
+     * Retrieves the session ID of this client.
+     * @return The session ID of this client.
+     */
+    public @Nonnull UUID getSessionID() {
+        return sessionID;
+    }
+
     /** @return the name of this player. **/
-    public String getName() {
+    public @Nullable String getName() {
         return name;
     }
 
     /** Sets the name of this player to {@param name}. **/
     public void setName(String name) {
         this.name = sanitiseName(name);
+    }
+
+    public RoyalUrNetIdentity getIdentity() {
+        return new RoyalUrNetIdentity("session(" + sessionID.toString() + ")", name);
     }
 
     /** @return Whether this client is currently connected. **/
@@ -106,7 +121,7 @@ public class Client {
     }
 
     /** Send the error {@param error} to the client, and close their connection. **/
-    public void error(String error) {
+    public void error(@Nonnull String error) {
         Checks.ensureNonNull(error, "error");
         if (!isSocketOpen())
             return;
@@ -146,7 +161,7 @@ public class Client {
 
     @Override
     public String toString() {
-        return "Client(id=" + id.toString().substring(0, 8) + ", name=\"" + name + "\")";
+        return "Client(id=" + sessionID.toString().substring(0, 8) + ", name=\"" + name + "\")";
     }
 
     /** Sanitises the given name to limit it to the max name length. **/

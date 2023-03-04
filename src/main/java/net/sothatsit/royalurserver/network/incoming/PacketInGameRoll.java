@@ -5,14 +5,14 @@ package net.sothatsit.royalurserver.network.incoming;
  *
  * @author Paddy Lamont
  */
-public class PacketInRoll extends PacketIn {
+public class PacketInGameRoll extends GamePacketIn {
 
-    public PacketInRoll() {
+    public PacketInGameRoll() {
         super(Type.ROLL);
     }
 
     @Override
     public String toString() {
-        return "PacketInRoll()";
+        return "PacketInRoll(gameID=" + gameID + ")";
     }
 }

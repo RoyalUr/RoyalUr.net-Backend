@@ -19,6 +19,7 @@ public class PacketInReOpen extends PacketIn {
 
     @Override
     public void readContents(PacketReader reader) {
+        super.readContents(reader);
         this.protocolVersion = reader.nextInt(4);
         this.previousID = reader.nextUUID();
         this.name = reader.nextVarString(2);

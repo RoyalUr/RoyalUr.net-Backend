@@ -1,15 +1,15 @@
 package net.sothatsit.royalurserver;
 
 import net.sothatsit.royalurserver.discord.DiscordBot;
-import net.sothatsit.royalurserver.game.Game;
+import net.sothatsit.royalurserver.game.GameID;
 import net.sothatsit.royalurserver.management.GameManager;
+import net.sothatsit.royalurserver.management.GameRepository;
+import net.sothatsit.royalurserver.management.ManagedGame;
 import net.sothatsit.royalurserver.management.MatchMaker;
 import net.sothatsit.royalurserver.network.Client;
 import net.sothatsit.royalurserver.network.RoyalUrServer;
-import net.sothatsit.royalurserver.network.incoming.PacketIn;
-import net.sothatsit.royalurserver.network.incoming.PacketInCreateGame;
-import net.sothatsit.royalurserver.network.incoming.PacketInFindGame;
-import net.sothatsit.royalurserver.network.incoming.PacketInJoinGame;
+import net.sothatsit.royalurserver.network.incoming.*;
+import net.sothatsit.royalurserver.network.outgoing.PacketOutGameInvalid;
 import net.sothatsit.royalurserver.ssl.KeyInfo;
 import net.sothatsit.royalurserver.ssl.LetsEncryptSSL;
 import net.sothatsit.royalurserver.util.Checks;
@@ -32,6 +32,7 @@ public class RoyalUr {
 
     private final Config config;
     private final RoyalUrServer server;
+    private final GameRepository gameRepository;
     private final GameManager gameManager;
     private final MatchMaker matchmaker;
     private final @Nullable DiscordBot bot;
@@ -39,15 +40,13 @@ public class RoyalUr {
     public RoyalUr() {
         this.config = Config.read();
         this.server = new RoyalUrServer(this, maybeLoadSSLKey());
-        this.gameManager = new GameManager();
-        this.matchmaker = new MatchMaker(gameManager);
+        this.gameRepository = new GameRepository();
+        this.gameManager = new GameManager(gameRepository);
+        this.matchmaker = new MatchMaker(gameRepository, gameManager);
 
         this.server.start();
         this.gameManager.start();
         this.bot = maybeStartDiscordBot();
-        if (bot != null) {
-            gameManager.addGameListener(bot);
-        }
     }
 
     private @Nullable KeyInfo maybeLoadSSLKey() {
@@ -121,7 +120,9 @@ public class RoyalUr {
         matchmaker.onClientDisconnect(client);
     }
 
-    /** Handle the timeout of the client {@param client}. **/
+    /**
+     * Handle the timeout of a client.
+     */
     public void onReconnectTimeout(Client client) {
         Checks.ensureNonNull(client, "client");
 
@@ -129,14 +130,24 @@ public class RoyalUr {
         gameManager.onClientTimeout(client);
     }
 
-    /** Handle the message {@param packet} from the client {@param client}. **/
+    /**
+     * Handle a message from a client.
+     */
     public void onMessage(Client client, PacketIn packet) {
         Checks.ensureNonNull(client, "client");
         Checks.ensureNonNull(packet, "packet");
 
-        Game game = gameManager.findActiveGame(client);
-        if (game != null) {
-            game.onMessage(client, packet);
+        if (packet instanceof GamePacketIn) {
+            GamePacketIn gamePacket = (GamePacketIn) packet;
+            ManagedGame game = gameManager.getGameOrNull(gamePacket.gameID);
+            if (game == null) {
+                client.error("Unable to find the game " + gamePacket.gameID);
+                throw new IllegalStateException(
+                        "Unable to find game " + gamePacket.gameID + " for " + client + " who sent " + packet
+                );
+            }
+
+            game.onPacket(client, packet);
             return;
         }
 
@@ -148,16 +159,18 @@ public class RoyalUr {
         switch (packet.type) {
             case JOIN_GAME -> {
                 PacketInJoinGame joinGamePacket = (PacketInJoinGame) packet;
-                if (matchmaker.isGameGenerated(joinGamePacket.gameID)) {
-                    matchmaker.joinGeneratedGame(joinGamePacket.gameID, client);
-                } else if (matchmaker.isGamePending(joinGamePacket.gameID)) {
-                    matchmaker.startPendingGame(joinGamePacket.gameID, client);
+                GameID gameID = joinGamePacket.gameID;
+
+                if (gameManager.containsGame(gameID)) {
+                    gameManager.joinGame(gameID, client, true);
+                } else if (matchmaker.isGameReserved(gameID)) {
+                    matchmaker.joinReservedGame(gameID, client);
                 } else {
-                    gameManager.onJoinGame(client, joinGamePacket.gameID, true);
+                    client.send(new PacketOutGameInvalid(gameID));
                 }
             }
             case FIND_GAME -> matchmaker.findMatchFor(client, (PacketInFindGame) packet);
-            case CREATE_GAME -> matchmaker.createPendingMatch(client, (PacketInCreateGame) packet);
+            case CREATE_GAME -> matchmaker.createPendingGame(client, (PacketInCreateGame) packet);
             default -> {
                 client.error("Unexpected packet " + packet.type + " while not in game");
                 throw new IllegalStateException(client + " not in game but sent " + packet);
