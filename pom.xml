@@ -164,7 +164,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>net.sothatsit.royalurserver.Main</mainClass>
+                            <mainClass>net.royalur.backend.Main</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
