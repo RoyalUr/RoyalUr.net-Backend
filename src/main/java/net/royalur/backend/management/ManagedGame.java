@@ -15,7 +15,6 @@ import net.royalur.backend.game.GameID;
 import net.royalur.backend.game.RoyalUrNetDiceRoll;
 import net.royalur.backend.game.SavedGame;
 import net.royalur.backend.network.Client;
-import net.sothatsit.royalurserver.network.outgoing.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
